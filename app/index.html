@@ -45,15 +45,18 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-siz
 #overlay{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;opacity:.5;max-width:none}
 #overlay.flip{transform:scaleX(-1)}
 #gl{position:absolute;inset:0;width:100%;height:100%;display:block}
-.readout{position:absolute;left:calc(12px + env(safe-area-inset-left,0px));bottom:12px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}
+.readout{position:absolute;left:calc(12px + env(safe-area-inset-left,0px));bottom:12px;max-width:calc(100% - min(34%,230px) - 36px);display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}
+.ro-btn{pointer-events:auto;font-family:var(--f-display);font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;background:var(--surface);color:var(--muted);border:1px solid var(--rule);border-radius:4px;padding:3px 9px;cursor:pointer}
+.ro-btn[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.ro-btn:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .readout span{font-family:var(--f-mono);font-size:12px;background:var(--surface);border:1px solid var(--rule);border-radius:4px;padding:3px 7px;font-variant-numeric:tabular-nums}
 .readout b{font-weight:500;color:var(--muted);margin-right:6px;font-family:var(--f-display);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
 .hint{position:absolute;left:50%;top:12px;transform:translateX(-50%);max-width:calc(100% - 32px);font-size:13px;background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:6px 10px;pointer-events:none;text-align:center}
-.pip{position:absolute;right:calc(12px + env(safe-area-inset-right,0px));top:12px;width:min(34%,230px);margin:0;background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:6px;cursor:pointer}
+.pip{position:absolute;right:calc(12px + env(safe-area-inset-right,0px));bottom:12px;width:min(34%,230px);margin:0;background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:6px;cursor:pointer}
 .pip img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:3px;background:var(--stage)}
 .pip img.flip{transform:scaleX(-1)}
 .pip figcaption{font-family:var(--f-mono);font-size:11px;color:var(--muted);padding-top:5px;display:flex;justify-content:space-between;gap:6px}
-.focus-exit{position:absolute;right:calc(12px + env(safe-area-inset-right,0px));bottom:12px;opacity:0;transition:opacity .25s}
+.focus-exit{position:absolute;right:calc(12px + env(safe-area-inset-right,0px));top:12px;opacity:0;transition:opacity .25s}
 .focus-exit.show{opacity:1}
 
 /* Panel */
@@ -205,6 +208,7 @@ body.focus .stage-btn{display:none}
         <span><b>Drehung</b><output id="ro-yaw"></output></span>
         <span><b>Neigung</b><output id="ro-pitch"></output></span>
         <span><b>Kippung</b><output id="ro-roll"></output></span>
+        <button class="ro-btn" type="button" id="btn-fig" aria-pressed="false">3D-Figur</button>
       </div>
       <button class="btn focus-exit" id="btn-focus-exit" type="button">Fokus beenden</button>
     </div>
@@ -232,9 +236,8 @@ body.focus .stage-btn{display:none}
         <div class="slider"><label for="s-style">Stil</label><output id="o-style"></output><input type="range" id="s-style" min="0" max="100" step="1" list="style-marks"><datalist id="style-marks"><option value="0"></option><option value="50"></option><option value="100"></option></datalist>
           <div class="styleticks" aria-hidden="true"><span>Realistisch</span><span>Anime</span><span>Chibi</span></div></div>
         <div class="row" style="align-items:center;justify-content:space-between">
-          <span style="font-size:14px;font-weight:500">Anime-Figur</span>
+          <span style="font-size:14px;font-weight:500">3D-Figur zeigen</span>
           <div class="seg" role="radiogroup" aria-label="Anime-Figur">
-            <label><input type="radio" name="fig" value="off"><span>Aus</span></label>
             <label><input type="radio" name="fig" value="side"><span>Daneben</span></label>
             <label><input type="radio" name="fig" value="over"><span>Darunter</span></label>
             <label><input type="radio" name="fig" value="only"><span>Allein</span></label>
@@ -415,6 +418,8 @@ try { const raw = localStorage.getItem("kopfdreher.v1"); if (raw) { const o = JS
   if (o.shadeMode == null && o.show && o.show.shade === false) S.shadeMode = "off"; } } catch (e) {}
 let saveT; const persist = () => { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem("kopfdreher.v1", JSON.stringify(S)); } catch (e) {} }, 300); };
 let mode = "rotate";
+if (!["side", "over", "only"].includes(S.fig)) S.fig = "side";
+let figOn = false;   // 3D-Figur startet immer ausgeschaltet
 
 /* ---------- Proportionen ---------- */
 const STYLES = {
@@ -666,7 +671,7 @@ function applyVisibility() {
   headParts.neck.visible = S.show.neck;
   headParts.vp.visible = S.show.vp;
   headParts.group.visible = !practiceHidden;
-  fillMat.colorWrite = celMat.colorWrite = S.show.fill && !overlayOn() && S.fig !== "over";
+  fillMat.colorWrite = celMat.colorWrite = S.show.fill && !overlayOn() && !(figOn && S.fig === "over");
   const mat = S.shadeMode === "cel" ? celMat : fillMat;
   for (const m of fillMeshes) m.material = mat;
   hemi.color.set(0xffffff);
@@ -764,7 +769,7 @@ let pending = false;
 function requestRender() { if (!pending) { pending = true; requestAnimationFrame(draw); } }
 function draw() {
   pending = false;
-  const fm = vrm ? S.fig : "off", side = fm === "side";
+  const fm = vrm && figOn ? S.fig : "off", side = fm === "side";
   updateCamera(side ? (W / 2) / H : 0);
   root.position.set(S.panX, S.panY, 0); figRoot.position.copy(root.position);
   head.rotation.set(rad(S.pitch), rad(S.yaw), rad(S.roll)); figPivot.rotation.copy(head.rotation);
@@ -842,7 +847,14 @@ $("#btn-eyes-reset").addEventListener("click", () => { S.eyeDist = S.eyeSize = S
 $("#eye-shape").addEventListener("change", e => { S.eyeShape = e.target.value; syncUI(); persist(); rebuildSoon(); });
 $("#t-iris").addEventListener("change", e => { S.iris = e.target.checked; persist(); rebuildSoon(); });
 sl.light[0].addEventListener("input", e => { S.light = +e.target.value; syncUI(); applyVisibility(); persist(); });
-document.querySelectorAll("input[name=fig]").forEach(r => { r.checked = r.value === S.fig; r.addEventListener("change", () => { S.fig = r.value; applyVisibility(); persist(); }); });
+document.querySelectorAll("input[name=fig]").forEach(r => { r.checked = r.value === S.fig; r.addEventListener("change", () => { S.fig = r.value; if (!figOn) setFig(true); applyVisibility(); persist(); }); });
+/* Figur erst beim ersten Einschalten laden (14 MB) */
+function setFig(on) {
+  figOn = on; $("#btn-fig").setAttribute("aria-pressed", String(on));
+  if (on && !vrm) loadVRM(DEFAULT_VRM);
+  applyVisibility();
+}
+$("#btn-fig").addEventListener("click", () => setFig(!figOn));
 $("#t-figclip").checked = S.figClip;
 $("#t-figclip").addEventListener("change", e => { S.figClip = e.target.checked; requestRender(); persist(); });
 $("#btn-vrm").addEventListener("click", () => $("#vrm-in").click());
@@ -1263,7 +1275,7 @@ $("#pr-show-ex").addEventListener("change", updatePracticeExample);
 
 /* ---------- Start ---------- */
 syncUI(); buildHead(); resize(); renderMatches();
-loadVRM(DEFAULT_VRM);
+setNote("#fig-note", "Figur wird beim ersten Einschalten geladen (ca. 14 MB).");
 initStore();
 })();
 </script>
