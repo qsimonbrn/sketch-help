@@ -94,7 +94,9 @@ def main():
             try: done.add(json.loads(line)["datei"])
             except Exception: pass
 
-    bilder = sorted(p for p in pathlib.Path(a.dir).rglob("*") if p.suffix.lower() in EXT)
+    # macOS legt per Samba versteckte Begleitdateien (._name) an; die sind keine Bilder
+    bilder = sorted(p for p in pathlib.Path(a.dir).rglob("*")
+                    if p.suffix.lower() in EXT and not p.name.startswith("."))
     if a.limit: bilder = bilder[:a.limit]
     offen = [p for p in bilder if str(p) not in done]
     print(f"{len(bilder)} Bilder, {len(offen)} offen, Modell {a.model}", file=sys.stderr)
