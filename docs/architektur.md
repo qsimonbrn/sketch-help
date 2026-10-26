@@ -68,3 +68,21 @@ Stufe 2 nur, wenn Stufe 1 nicht reicht.
 Folgerungen: erst Vorverarbeitung, dann zweiter Lauf. Für Rahmen und Winkel einen spezialisierten
 Anime-Gesichtsdetektor mit Gesichtspunkten prüfen (Rahmen für Gesicht, Augen, Mund direkt aus den Punkten,
 Winkel per `solvePnP`), das Vision-Modell nur noch für Schlagworte nutzen.
+
+## Testlauf 2 (mit Vorverarbeitung, 1280 px, EXIF angewendet)
+
+| Messung | Ergebnis |
+|---|---|
+| Laufzeit | 5,1 s pro Bild (Lauf 1: 8,6 s) |
+| Kopfwinkel | Weiter gerastert; 35 von 61 Bildern mit Drehung 0° oder −5°. Abweichung zu Lauf 1 im Median 15°, maximal 175° |
+| Bildbereiche | Mehr Arten (Mund 11, Nase 7, Gesicht 5, Haare 2), aber weiter lückenhaft |
+| Stabilität | Geschlecht in 50/61, Haarlänge in 42/61 Fällen gleich wie in Lauf 1 |
+
+## Entscheidung (26.10.2026)
+
+- **Exakte Winkelbeispiele** kommen aus 3D-Anime-Figuren des VRoid-Projekts, die laut zwei unabhängigen
+  Quellen (OpenGameArt, Mitsua-Datensatz) unter CC0 stehen: AvatarSample D–G, HairSample männlich/weiblich,
+  Basismodelle, Sakurada Fumiriya, Sendagaya Shino. Die App rendert sie im selben Winkel wie den Konstruktionskopf.
+  Voraussetzung: Umstieg von Three.js r128 auf eine aktuelle Version mit `@pixiv/three-vrm`.
+- **Eigene Bilder** werden nur grob in Ansichten einsortiert (z. B. „¾ links, von unten“), keine Winkelschätzung.
+- Handwerte und Gesichtsdetektor sind zurückgestellt.
