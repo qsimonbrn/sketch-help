@@ -43,8 +43,10 @@ per Dateiname an die Einträge gehängt (Feld `analyse`), Simon prüft Schlagwor
 - [x] Aussortierte endgültig gelöscht (Pi-Ordner und App)
 - [x] `tools/analyse.py` auf grobe Ansichten umgestellt (Version 4, Probelauf mit Ersatzserver); `kopf` wird nur noch aus der Kategorie abgeleitet
 - [x] Import als Skript (`tools/import_analyse.py`), Stabilitätsvergleich (`tools/vergleich.py`)
-- [ ] Lauf über die 40 Bilder (`ergebnis3.jsonl`) und Gegenlauf gespiegelt (`--spiegeln`), dann `vergleich.py`; Simon prüft den Bericht (PC muss an sein)
-- [ ] Ergebnis importieren
+- [x] Lauf 3 über die 40 Bilder und Gegenlauf gespiegelt (26.10.2026), Ergebnis in [docs/architektur.md](docs/architektur.md#testlauf-3-26102026-40-bilder-analyse-version-4-kategorien-statt-winkel):
+      Seitenwort des Modells unbrauchbar (nie „links“), Rahmen spiegeln korrekt
+- [ ] Drehrichtung aus den Rahmen ableiten (Nasenlage, Augengrößen); Schwellen per Sichtprüfung (Kontaktbogen) festlegen
+- [ ] Ergebnis importieren (erst danach, sonst landen links gedrehte Köpfe als „rechts“ in der App)
 - [ ] App: Bilder auf den Figur-Rahmen zugeschnitten anzeigen (Sammlung, Overlay, Beispiele)
 - [ ] Duplikaterkennung verbessern: dHash war unzuverlässig (0483/0484 als ähnlich gemeldet, sind verschiedene Figuren)
 

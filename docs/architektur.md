@@ -89,3 +89,28 @@ Winkel per `solvePnP`), das Vision-Modell nur noch für Schlagworte nutzen.
   Voraussetzung: Umstieg von Three.js r128 auf eine aktuelle Version mit `@pixiv/three-vrm`.
 - **Eigene Bilder** werden nur grob in Ansichten einsortiert (z. B. „¾ links, von unten“), keine Winkelschätzung.
 - Handwerte und Gesichtsdetektor sind zurückgestellt.
+
+## Testlauf 3 (26.10.2026, 40 Bilder, Analyse Version 4, Kategorien statt Winkel)
+
+Zwei Läufe: normal (`ergebnis3.jsonl`) und mit waagerecht gespiegelten Bildern (`ergebnis3_spiegel.jsonl`).
+Beim Spiegeln muss sich die Drehrichtung umkehren, alles andere gleich bleiben. Auswertung mit `tools/vergleich.py`.
+
+| Messung | Ergebnis | Bewertung |
+|---|---|---|
+| Laufzeit | 7,3 s pro Bild (zwei Modellaufrufe), 40 Bilder ≈ 5 min | 2000 Bilder ≈ 4 h |
+| Verteilung Drehung (normal) | frontal 25, ¾ rechts 8, Profil rechts 6, hinten 1; **kein einziges „links“** | Seitenwort einseitig |
+| Drehrichtung beim Spiegeln | Von 14 gedrehten Bildern nur 5 richtig umgekehrt (die klaren Profile); ¾-Ansichten behalten meist „rechts“ | **Seite aus dem Modellwort unbrauchbar**; frontal/gedreht/Profil/hinten brauchbar |
+| Stufe 1 gegen Stufe 2 | Drehung in 34/38 gleich | Kopfausschnitt bringt keine andere Aussage |
+| Neigung | 39 von 40 „Augenhöhe“, beim Spiegeln 39/40 gleich | Stabil, aber ohne Aussage (Testbilder fast alle auf Augenhöhe, oder das Modell rastert) |
+| Geschlecht / Haarlänge | 39/40 bzw. 34/40 gleich | Brauchbar |
+| Art (Kopf, Oberkörper …) | nur 24/40 gleich, oft „sonstiges“ bei klarer Figur | Unbrauchbar |
+| **Rahmen statt Wort** | Nasenlage im Gesichtsrahmen kehrt sich beim Spiegeln in 22/26 Fällen um, Augengrößen in 12/16 | Die Rahmen folgen dem Bild, das Wort nicht |
+
+Beispiel IMG_0443 (Profil): Das Modell sagt in beiden Läufen „Profil rechts“, setzt das sichtbare Auge aber
+korrekt einmal links, einmal rechts. Bei IMG_0444 und IMG_0489 („¾ rechts“) liegen Nase links und linkes Auge
+kleiner, beides spricht für „¾ links“.
+
+Folgerung: Die Drehrichtung aus der Geometrie ableiten (Nasen- bzw. Mundlage relativ zur Gesichtsmitte,
+Augengrößen, ein Auge = Profil); das Modellwort nur für frontal/gedreht/Profil/hinten nutzen. Das lässt sich
+aus den vorhandenen Ergebnissen berechnen, ohne neuen Lauf. Schwellen noch nicht gegen Sichtprüfung geprüft.
+Nicht importiert, solange die Seite falsch ist.
