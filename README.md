@@ -27,6 +27,7 @@ gespiegelt.
 
 ```
 app/index.html     Die App in einer Datei (Three.js r128 per CDN)
+TODO.md            Offene Aufgaben, nach Reihenfolge
 docs/roadmap.md    Geplante Ausbaustufen
 docs/architektur.md  Zielbild mit Raspberry Pi und Bildanalyse auf dem PC
 tools/analyse_test.py  Testlauf: Bilder per Ollama verschlagworten (nur Standardbibliothek)
