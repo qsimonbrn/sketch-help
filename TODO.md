@@ -1,6 +1,6 @@
 # TODO
 
-Stand: 26.10.2026, v0.11. Reihenfolge = Vorschlag für die nächsten Sitzungen.
+Stand: 26.10.2026, v0.11, Analyseskript Version 4. Reihenfolge = Vorschlag für die nächsten Sitzungen.
 Hintergrund und Messwerte stehen in [docs/architektur.md](docs/architektur.md), der Plan in [docs/roadmap.md](docs/roadmap.md).
 
 ## 1. Version 5 auf dem iPad prüfen
@@ -32,26 +32,28 @@ VRoid-Modelle sind VRM 0.x; `VRMUtils.rotateVRM0` ist schon eingebaut.
 
 ## 3. Eigene Bilder grob einsortieren
 
-Testbilder in der App prüfen: Simon lädt die 61 Bilder aus `usb-share/sketch-help/test` in der App hoch
-(die App speichert seit Version 7 den Dateinamen). Danach hängt Claude die Analyse aus `ergebnis2.jsonl`
-per Dateiname an die Einträge (Feld `analyse`), Simon prüft Schlagworte und Vorschlag in der App.
+Testbilder in der App prüfen: Simon hat die damals 61 Bilder aus `usb-share/sketch-help/test` in der App hochgeladen
+(die App speichert seit Version 7 den Dateinamen). Danach hat Claude die Analyse aus `ergebnis2.jsonl`
+per Dateiname an die Einträge gehängt (Feld `analyse`), Simon prüft Schlagworte und Vorschlag in der App.
 
 - [x] 61 Testbilder in der App hochgeladen (Simon)
 - [x] Analyse importiert (61 Einträge, Feld `analyse`; 2 ältere Einträge ohne Namen bleiben ohne Analyse)
 - [x] Merkmal-Ausschnitte in der App (Augen, Mund, Nase, Haare, Gesicht), sortiert nach Abweichung zur Drehung
 - [x] Testbilder sortiert (Kontaktbogen, Sichtprüfung): 14 unbrauchbar, 7 Duplikate nach `test/_aussortiert/` verschoben, in der App ausgeblendet
 - [x] Aussortierte endgültig gelöscht (Pi-Ordner und App)
-- [ ] `tools/analyse.py` (zweistufig, mit Figur-Rahmen und „brauchbar“) über die 40 Bilder laufen lassen, sobald der PC an ist
+- [x] `tools/analyse.py` auf grobe Ansichten umgestellt (Version 4, Probelauf mit Ersatzserver); `kopf` wird nur noch aus der Kategorie abgeleitet
+- [x] Import als Skript (`tools/import_analyse.py`), Stabilitätsvergleich (`tools/vergleich.py`)
+- [ ] Lauf über die 40 Bilder (`ergebnis3.jsonl`) und Gegenlauf gespiegelt (`--spiegeln`), dann `vergleich.py`; Simon prüft den Bericht (PC muss an sein)
+- [ ] Ergebnis importieren
 - [ ] App: Bilder auf den Figur-Rahmen zugeschnitten anzeigen (Sammlung, Overlay, Beispiele)
 - [ ] Duplikaterkennung verbessern: dHash war unzuverlässig (0483/0484 als ähnlich gemeldet, sind verschiedene Figuren)
-- [ ] Import als Skript ins Repo (`tools/import_analyse.py`), statt von Hand
 
 Testläufe zeigen: `qwen3.5:9b` schätzt keine brauchbaren Winkel. Entscheidung: nur grobe Ansichten.
 
-- [ ] Schema auf Kategorien umstellen: Drehung (frontal, ¾ links/rechts, Profil links/rechts, von hinten),
-      Neigung (von oben, Augenhöhe, von unten), Art, Geschlecht, Haarlänge, Frisur
-- [ ] Testlauf über die 61 Testbilder; Simon prüft den Bericht
-- [ ] Stabilität messen: zwei Läufe, wie oft gleiche Kategorie?
+- [x] Schema auf Kategorien umstellen: Drehung (frontal, ¾ links/rechts, Profil links/rechts, hinten),
+      Neigung (oben, Augenhöhe, unten); in Stufe 1 und Stufe 2, Stufe 2 hat Vorrang
+- Stabilität: Zwei gleiche Läufe sagen bei Temperatur 0 nichts aus. Stattdessen Gegenlauf mit gespiegelten
+  Bildern (Drehung muss sich umkehren, der Rest gleich bleiben) und Stufe 1 gegen Stufe 2.
 - [ ] App: Beispiele nach Kategorie der aktuellen Drehung zeigen
 
 Laufzeit mit Vorverarbeitung ca. 5 s pro Bild, 2000 Bilder ≈ 3 h.
@@ -98,5 +100,5 @@ Bekannt: Pi 4B hat nur ca. 1 GB RAM frei. Dateien im Ordner gehören `simon`, sc
 
 ## Aufräumen auf dem Pi
 
-Testdateien in `/mnt/usb-hdd/sketch-help/`: `test/` (61 Bilder), `tools/`, `.venv/` (47 MB),
+Testdateien in `/mnt/usb-hdd/sketch-help/`: `test/` (40 Bilder), `tools/`, `.venv/` (47 MB),
 `ergebnis*.jsonl`, `bericht*.html`. Bleiben vorerst für weitere Testläufe.

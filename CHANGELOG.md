@@ -2,6 +2,13 @@
 
 Versionsnummern entsprechen den Veröffentlichungen des Artefakts.
 
+## Unveröffentlicht
+
+- **Analyse Version 4** (`tools/analyse.py`): grobe Ansichten statt Winkeln, Drehung (frontal, ¾ links/rechts,
+  Profil links/rechts, hinten) und Neigung (oben, Augenhöhe, unten). `kopf` nur noch aus der Kategorie
+  abgeleitet, damit v0.11 weiter sortiert. Option `--spiegeln` für den Gegenlauf
+- `tools/vergleich.py` (Stabilität), `tools/import_analyse.py` (Import per Dateiname statt von Hand)
+
 ## v0.11 (26.10.2026)
 
 - **Filter** für Beispiele und Merkmal-Ausschnitte: Geschlecht (weiblich/männlich) und Haarlänge (kurz/mittel/lang)

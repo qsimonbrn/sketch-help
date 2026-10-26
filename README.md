@@ -33,7 +33,10 @@ TODO.md            Offene Aufgaben, nach Reihenfolge
 CHANGELOG.md       Änderungen je Version
 docs/roadmap.md    Geplante Ausbaustufen
 docs/architektur.md  Zielbild mit Raspberry Pi und Bildanalyse auf dem PC
-tools/analyse_test.py  Testlauf: Bilder per Ollama verschlagworten (nur Standardbibliothek)
+tools/analyse.py       Bildanalyse per Ollama: brauchbar, Schlagworte, Ansicht (Drehung/Neigung), Rahmen
+tools/vergleich.py     Stabilität: zwei Läufe vergleichen (auch gegen einen gespiegelten Lauf)
+tools/import_analyse.py  Analyse per Dateiname an die Einträge der App hängen
+tools/analyse_test.py  Alter Testlauf (Lauf 1 und 2), nur noch zum Nachvollziehen
 tools/box_report.py    Prüfbericht: erkannte Bildbereiche als Rahmen über den Bildern
 ```
 
