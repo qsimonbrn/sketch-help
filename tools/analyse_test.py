@@ -108,7 +108,10 @@ def main():
     done = set()
     if out.exists():
         for line in out.read_text(encoding="utf-8").splitlines():
-            try: done.add(json.loads(line)["datei"])
+            try:
+                r = json.loads(line)
+                if not r.get("fehler"):  # nur erfolgreiche Bilder gelten als erledigt
+                    done.add(r["datei"])
             except Exception: pass
 
     # macOS legt per Samba versteckte Begleitdateien (._name) an; die sind keine Bilder
@@ -119,6 +122,7 @@ def main():
     print(f"{len(bilder)} Bilder, {len(offen)} offen, Modell {a.model}, "
           + (f"Vorverarbeitung auf {a.max_side} px" if Image else "OHNE Vorverarbeitung (Pillow fehlt)"), file=sys.stderr)
 
+    fehler_in_folge = 0
     with out.open("a", encoding="utf-8") as f:
         for i, p in enumerate(offen, 1):
             t0 = time.time()
@@ -130,6 +134,10 @@ def main():
             except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, KeyError, OSError) as e:
                 rec.update(ergebnis=None, sekunden=round(time.time() - t0, 1), fehler=f"{type(e).__name__}: {e}")
             f.write(json.dumps(rec, ensure_ascii=False) + "\n"); f.flush()
+            fehler_in_folge = fehler_in_folge + 1 if rec["fehler"] else 0
+            if fehler_in_folge >= 3 and "URLError" in (rec["fehler"] or ""):
+                print("Ollama dreimal nicht erreichbar, Abbruch. Ein Neustart macht mit den offenen Bildern weiter.", file=sys.stderr)
+                sys.exit(2)
             k = (rec["ergebnis"] or {}).get("kopf") or {}
             print(f"[{i}/{len(offen)}] {p.name}: {rec['sekunden']} s, "
                   + (rec["fehler"] or f"yaw {k.get('yaw')} pitch {k.get('pitch')} roll {k.get('roll')}"), file=sys.stderr)
