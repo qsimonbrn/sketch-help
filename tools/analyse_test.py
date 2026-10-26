@@ -9,7 +9,12 @@ Nur Standardbibliothek, läuft auf Pi, Mac oder PC.
 Je Bild eine JSON-Zeile mit Schlagworten, Kopfwinkel, Merkmal-Bereichen und Laufzeit.
 Bereits ausgewertete Bilder werden übersprungen, ein Abbruch kostet also nichts.
 """
-import argparse, base64, json, pathlib, sys, time, urllib.request, urllib.error
+import argparse, base64, io, json, pathlib, sys, time, urllib.request, urllib.error
+
+try:  # Pillow ist optional; ohne Pillow gehen die Rohbilder raus (EXIF-Drehung wird dann ignoriert)
+    from PIL import Image, ImageOps
+except ImportError:
+    Image = None
 
 EXT = {".png", ".jpg", ".jpeg", ".webp"}
 MERKMALE = ["gesicht", "auge_links", "auge_rechts", "mund", "nase", "haare", "ohr", "hand", "koerper"]
@@ -64,6 +69,17 @@ Nur aufführen, was wirklich zu sehen ist.
 frisur: wenige Wörter, z. B. "Zopf", "kurz, wuschelig", "Pony, glatt"."""
 
 
+def prepare(path, max_side):
+    """Bild aufrecht drehen (EXIF) und verkleinern, damit Modell und Browser dasselbe Bild sehen."""
+    if Image is None:
+        return path.read_bytes()
+    with Image.open(path) as im:
+        im = ImageOps.exif_transpose(im).convert("RGB")
+        im.thumbnail((max_side, max_side))
+        buf = io.BytesIO(); im.save(buf, "JPEG", quality=90)
+        return buf.getvalue()
+
+
 def call(ollama, model, img_b64, timeout):
     body = {
         "model": model, "stream": False, "think": False, "format": SCHEMA,
@@ -85,6 +101,7 @@ def main():
     ap.add_argument("--model", default="qwen3.5:9b")
     ap.add_argument("--timeout", type=int, default=600)
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--max-side", type=int, default=1280, help="Längste Bildseite in Pixeln (nur mit Pillow)")
     a = ap.parse_args()
 
     out = pathlib.Path(a.out)
@@ -99,17 +116,18 @@ def main():
                     if p.suffix.lower() in EXT and not p.name.startswith("."))
     if a.limit: bilder = bilder[:a.limit]
     offen = [p for p in bilder if str(p) not in done]
-    print(f"{len(bilder)} Bilder, {len(offen)} offen, Modell {a.model}", file=sys.stderr)
+    print(f"{len(bilder)} Bilder, {len(offen)} offen, Modell {a.model}, "
+          + (f"Vorverarbeitung auf {a.max_side} px" if Image else "OHNE Vorverarbeitung (Pillow fehlt)"), file=sys.stderr)
 
     with out.open("a", encoding="utf-8") as f:
         for i, p in enumerate(offen, 1):
             t0 = time.time()
             rec = {"datei": str(p), "modell": a.model}
             try:
-                res, raw = call(a.ollama, a.model, base64.b64encode(p.read_bytes()).decode(), a.timeout)
+                res, raw = call(a.ollama, a.model, base64.b64encode(prepare(p, a.max_side)).decode(), a.timeout)
                 rec.update(ergebnis=res, sekunden=round(time.time() - t0, 1),
                            tokens=raw.get("eval_count"), fehler=None)
-            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, KeyError) as e:
+            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, KeyError, OSError) as e:
                 rec.update(ergebnis=None, sekunden=round(time.time() - t0, 1), fehler=f"{type(e).__name__}: {e}")
             f.write(json.dumps(rec, ensure_ascii=False) + "\n"); f.flush()
             k = (rec["ergebnis"] or {}).get("kopf") or {}
