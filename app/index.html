@@ -24,6 +24,7 @@
   --blue:#69B3EA; --blue-soft:#3B6A8C; --blue-tint:#17293A;
   --red:#F06A60; --red-tint:#3A1F1E; --fill:#222C34; color-scheme:dark}
 
+[hidden]{display:none!important}
 html,body{height:100%}
 body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
 .app{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr)}
@@ -114,6 +115,27 @@ body.focus .bar,body.focus .panel,body.focus .readout,body.focus .hint{display:n
 body.focus .app{grid-template-rows:minmax(0,1fr)}
 body.focus .main{grid-template-columns:minmax(0,1fr)}
 
+.stage-btn{position:absolute;left:calc(12px + env(safe-area-inset-left,0px));top:12px}
+.styleticks{grid-column:1/-1;display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.practice{position:absolute;left:50%;top:12px;transform:translateX(-50%);width:min(420px,calc(100% - 24px));background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:12px;display:grid;gap:10px;box-shadow:0 6px 24px rgb(0 0 0 / .12)}
+.practice .task{font-family:var(--f-display);font-weight:600;font-size:19px;line-height:1.2;text-wrap:balance}
+.practice .nums{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.practice .clock{font-family:var(--f-mono);font-size:22px;font-variant-numeric:tabular-nums;color:var(--red)}
+.practice .ex{display:block;max-height:140px;width:auto;max-width:100%;border-radius:4px}
+.practice .ex.flip{transform:scaleX(-1)}
+.gallery{position:fixed;inset:0;z-index:20;background:var(--paper);display:grid;grid-template-rows:auto minmax(0,1fr);
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.gallery header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-block:10px;border-bottom:1px solid var(--rule);background:var(--surface);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.gallery header h2{margin:0;font-family:var(--f-display);font-weight:700;font-size:19px;flex:1;min-width:0}
+.gallery .body{overflow:auto;padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.ggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.gcard{display:grid;gap:8px;background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:8px;min-width:0}
+.gcard img{width:100%;aspect-ratio:4/3;object-fit:contain;background:var(--stage);border-radius:4px;display:block}
+.gcard img.flip{transform:scaleX(-1)}
+.gcard .meta{font-family:var(--f-mono);font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:6px;font-variant-numeric:tabular-nums}
+.gcard .meta b{color:var(--ink);font-weight:500}
+body.focus .stage-btn{display:none}
 @media (max-width:820px){
   .app{height:auto;display:block}
   .main{display:block}
@@ -133,6 +155,7 @@ body.focus .main{grid-template-columns:minmax(0,1fr)}
       <label><input type="radio" name="mode" id="mode-move" value="move"><span>Verschieben</span></label>
     </div>
     <button class="btn" id="btn-reset-view" type="button">Ansicht zurücksetzen</button>
+    <button class="btn" id="btn-practice" type="button">Übung</button>
     <button class="btn primary" id="btn-focus" type="button">Fokus</button>
   </header>
 
@@ -141,6 +164,25 @@ body.focus .main{grid-template-columns:minmax(0,1fr)}
       <img id="overlay" alt="" hidden>
       <canvas id="gl" aria-label="Drehbarer Konstruktionskopf"></canvas>
       <div class="hint" id="hint" hidden></div>
+      <button class="btn stage-btn" id="btn-gallery" type="button">Beispiele zu dieser Drehung</button>
+      <div class="practice" id="practice" hidden>
+        <div class="task" id="pr-task"></div>
+        <div class="nums" id="pr-nums"></div>
+        <img class="ex" id="pr-ex" alt="Beispielbild zur Aufgabe" hidden>
+        <div class="row" style="align-items:center">
+          <span class="clock" id="pr-clock" hidden></span>
+          <label class="note" for="pr-time">Zeit</label>
+          <select id="pr-time" class="btn">
+            <option value="0">ohne</option><option value="60">1 min</option><option value="180">3 min</option><option value="300">5 min</option>
+          </select>
+          <label class="chip"><input type="checkbox" id="pr-show-ex"><span>Beispiel zeigen</span></label>
+        </div>
+        <div class="row">
+          <button class="btn primary" type="button" id="pr-reveal">Auflösen</button>
+          <button class="btn" type="button" id="pr-next">Nächste Aufgabe</button>
+          <button class="btn" type="button" id="pr-end">Beenden</button>
+        </div>
+      </div>
       <figure class="pip" id="pip" hidden>
         <img id="pip-img" alt="Passendes Beispielbild">
         <figcaption><span>Bestes Beispiel</span><span id="pip-dev"></span></figcaption>
@@ -173,13 +215,8 @@ body.focus .main{grid-template-columns:minmax(0,1fr)}
 
       <section class="sec">
         <h2>Ansicht</h2>
-        <div class="row" style="align-items:center;justify-content:space-between">
-          <span style="font-size:14px;font-weight:500">Proportionen</span>
-          <div class="seg" role="radiogroup" aria-label="Proportionen">
-            <label><input type="radio" name="preset" id="pr-anime" value="anime" checked><span>Anime</span></label>
-            <label><input type="radio" name="preset" id="pr-loomis" value="loomis"><span>Loomis</span></label>
-          </div>
-        </div>
+        <div class="slider"><label for="s-style">Stil</label><output id="o-style"></output><input type="range" id="s-style" min="0" max="100" step="1">
+          <div class="styleticks" aria-hidden="true"><span>Realistisch</span><span>Anime</span><span>Chibi</span></div></div>
         <div class="slider"><label for="s-persp">Perspektive</label><output id="o-persp"></output><input type="range" id="s-persp" min="0" max="100" step="1"></div>
         <div class="slider"><label for="s-lw">Linienstärke</label><output id="o-lw"></output><input type="range" id="s-lw" min="0.5" max="3" step="0.1"></div>
         <div class="chips" id="toggles">
@@ -190,10 +227,20 @@ body.focus .main{grid-template-columns:minmax(0,1fr)}
           <label class="chip c-soft"><input type="checkbox" id="t-grid"><span>Gitter</span></label>
           <label class="chip"><input type="checkbox" id="t-hidden"><span>Verdeckte Linien</span></label>
           <label class="chip"><input type="checkbox" id="t-fill"><span>Fläche</span></label>
-          <label class="chip"><input type="checkbox" id="t-shade"><span>Schattierung</span></label>
           <label class="chip"><input type="checkbox" id="t-neck"><span>Hals</span></label>
           <label class="chip"><input type="checkbox" id="t-pip"><span>Bestes Beispiel einblenden</span></label>
+          <label class="chip c-soft"><input type="checkbox" id="t-box"><span>Kopf in Box</span></label>
+          <label class="chip c-soft"><input type="checkbox" id="t-vp"><span>Fluchtlinien</span></label>
         </div>
+        <div class="row" style="align-items:center;justify-content:space-between">
+          <span style="font-size:14px;font-weight:500">Schattierung</span>
+          <div class="seg" role="radiogroup" aria-label="Schattierung">
+            <label><input type="radio" name="shade" value="off"><span>Aus</span></label>
+            <label><input type="radio" name="shade" value="soft"><span>Weich</span></label>
+            <label><input type="radio" name="shade" value="cel"><span>Cel</span></label>
+          </div>
+        </div>
+        <div class="slider" id="light-row"><label for="s-light">Lichtrichtung</label><output id="o-light"></output><input type="range" id="s-light" min="-180" max="180" step="5"></div>
       </section>
 
       <section class="sec">
@@ -256,6 +303,22 @@ body.focus .main{grid-template-columns:minmax(0,1fr)}
   </div>
 </div>
 
+<div class="gallery" id="gallery" hidden role="dialog" aria-modal="true" aria-labelledby="g-title">
+  <header>
+    <h2 id="g-title">Beispiele zu dieser Drehung</h2>
+    <div class="seg" role="radiogroup" aria-label="Höchstabweichung">
+      <label><input type="radio" name="gmax" value="15"><span>bis 15°</span></label>
+      <label><input type="radio" name="gmax" value="30" checked><span>bis 30°</span></label>
+      <label><input type="radio" name="gmax" value="180"><span>alle</span></label>
+    </div>
+    <button class="btn primary" type="button" id="g-close">Schließen</button>
+  </header>
+  <div class="body">
+    <div class="ggrid" id="g-grid"></div>
+    <p class="note" id="g-empty" hidden></p>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineSegmentsGeometry.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineGeometry.js"></script>
@@ -272,24 +335,35 @@ const sstep = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); retu
 const fmt = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(Math.round(v)) + "°";
 
 /* ---------- Zustand ---------- */
-const DEF = { yaw: 30, pitch: 10, roll: 0, zoom: 1, panX: 0, panY: 0, persp: 30, lw: 1.2, preset: "anime",
-  show: { axis: true, face: true, feat: true, side: true, grid: false, hidden: true, fill: true, shade: true, neck: true, pip: true },
+const DEF = { yaw: 30, pitch: 10, roll: 0, zoom: 1, panX: 0, panY: 0, persp: 30, lw: 1.2, style: 50, shadeMode: "soft", light: -45,
+  show: { axis: true, face: true, feat: true, side: true, grid: false, hidden: true, fill: true, neck: true, pip: true, box: false, vp: false },
   ovop: 50 };
 let S = JSON.parse(JSON.stringify(DEF));
-try { const raw = localStorage.getItem("kopfdreher.v1"); if (raw) { const o = JSON.parse(raw); S = { ...S, ...o, show: { ...S.show, ...(o.show || {}) } }; } } catch (e) {}
+try { const raw = localStorage.getItem("kopfdreher.v1"); if (raw) { const o = JSON.parse(raw); S = { ...S, ...o, show: { ...S.show, ...(o.show || {}) } };
+  if (o.style == null && o.preset) S.style = o.preset === "loomis" ? 0 : 50;
+  if (o.shadeMode == null && o.show && o.show.shade === false) S.shadeMode = "off"; } } catch (e) {}
 let saveT; const persist = () => { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem("kopfdreher.v1", JSON.stringify(S)); } catch (e) {} }, 300); };
 let mode = "rotate";
 
 /* ---------- Proportionen ---------- */
-const PRESETS = {
+const STYLES = {
   anime:  { sx: .86, sz: .96, L: 1.30, zc: .58, chinW: .06, wj: .66, yj: .88, zj: -.02, earBaseY: -.86, backY: -.78, backZ: -.62,
             bulgeFront: .03, browY: -.05, eyeY: -.34, eyeX: .40, eyeDx: .19, eyeDy: .13, noseY: -.78, noseLen: .06,
             mouthY: -1.02, mouthW: .16, hairY: .42, neckR: .27 },
   loomis: { sx: .90, sz: 1.0, L: 1.62, zc: .84, chinW: .20, wj: .74, yj: 1.12, zj: .02, earBaseY: -.95, backY: -.82, backZ: -.66,
             bulgeFront: .05, browY: 0, eyeY: -.20, eyeX: .36, eyeDx: .15, eyeDy: .055, noseY: -.81, noseLen: .14,
-            mouthY: -1.12, mouthW: .22, hairY: .78, neckR: .40 }
+            mouthY: -1.12, mouthW: .22, hairY: .78, neckR: .40 },
+  chibi:  { sx: .95, sz: .92, L: 1.02, zc: .55, chinW: .16, wj: .80, yj: .70, zj: 0, earBaseY: -.80, backY: -.78, backZ: -.60,
+            bulgeFront: .05, browY: -.24, eyeY: -.50, eyeX: .42, eyeDx: .24, eyeDy: .20, noseY: -.74, noseLen: .02,
+            mouthY: -.84, mouthW: .10, hairY: .20, neckR: .20 }
 };
-let P = PRESETS[S.preset] || PRESETS.anime;
+/* Stil-Regler: 0 = realistisch (Loomis), 50 = Anime, 100 = Chibi, dazwischen linear überblendet */
+function paramsFor(v) {
+  const [a, b, t] = v <= 50 ? [STYLES.loomis, STYLES.anime, v / 50] : [STYLES.anime, STYLES.chibi, (v - 50) / 50];
+  const o = {}; for (const k of Object.keys(a)) o[k] = lerp(a[k], b[k], t); return o;
+}
+const styleName = v => v < 25 ? "Realistisch" : v < 75 ? "Anime" : "Chibi";
+let P = paramsFor(S.style);
 
 /* Unterer Kontur-Ring (Kinn, Kiefer, Schädelbasis) als geschlossene Catmull-Rom-Kurve über den Winkel phi */
 let KEYS = [];
@@ -349,6 +423,11 @@ function readColors() {
 readColors();
 
 const fillMat = new THREE.MeshLambertMaterial({ color: COL.fill, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1.5, polygonOffsetUnits: 3 });
+const celTex = new THREE.DataTexture(new Uint8Array([130, 130, 130, 255, 130, 130, 130, 255, 130, 130, 130, 255, 255, 255, 255, 255]), 4, 1, THREE.RGBAFormat);
+celTex.minFilter = celTex.magFilter = THREE.NearestFilter; celTex.needsUpdate = true;
+const celMat = new THREE.MeshToonMaterial({ color: COL.fill, gradientMap: celTex, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1.5, polygonOffsetUnits: 3 });
+const fillMeshes = [];
+const fillMesh = g => { const m = new THREE.Mesh(g, S.shadeMode === "cel" ? celMat : fillMat); fillMeshes.push(m); return m; };
 const outlineU = { value: .01 };
 const outlineMat = new THREE.MeshBasicMaterial({ color: COL.blue, side: THREE.BackSide });
 outlineMat.onBeforeCompile = sh => {
@@ -356,7 +435,7 @@ outlineMat.onBeforeCompile = sh => {
   sh.vertexShader = "uniform float uOutline;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\ntransformed += normal * uOutline;");
 };
 
-const CATS = { axis: { col: "red", w: 2.6 }, face: { col: "blue", w: 2.0 }, feat: { col: "blue", w: 2.0 }, side: { col: "blue", w: 1.6 }, grid: { col: "blue-soft", w: 1.2 } };
+const CATS = { axis: { col: "red", w: 2.6 }, face: { col: "blue", w: 2.0 }, feat: { col: "blue", w: 2.0 }, side: { col: "blue", w: 1.6 }, grid: { col: "blue-soft", w: 1.2 }, box: { col: "blue-soft", w: 1.8 } };
 const lineMats = [];
 for (const [k, c] of Object.entries(CATS)) {
   c.vis = new THREE.LineMaterial({ color: new THREE.Color(COL[c.col]).getHex(), linewidth: c.w });
@@ -364,8 +443,10 @@ for (const [k, c] of Object.entries(CATS)) {
   c.hid.defines.USE_DASH = ""; c.hid.depthFunc = THREE.GreaterDepth; c.hid.needsUpdate = true;
   lineMats.push(c.vis, c.hid);
 }
+const vpMat = new THREE.LineMaterial({ color: new THREE.Color(COL["blue-soft"]).getHex(), linewidth: 1, transparent: true, opacity: .55, depthTest: false, depthWrite: false });
+lineMats.push(vpMat);
 function applyColors(src) {
-  fillMat.color.set(src.fill); outlineMat.color.set(src.blue);
+  fillMat.color.set(src.fill); celMat.color.set(src.fill); outlineMat.color.set(src.blue); vpMat.color.set(src["blue-soft"]);
   for (const c of Object.values(CATS)) { c.vis.color.set(src[c.col]); c.hid.color.set(src[c.col]); }
 }
 applyColors(COL);
@@ -400,13 +481,14 @@ function headGeometry() {
 }
 function buildHead() {
   if (headParts) { head.remove(headParts.group); headParts.group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+  fillMeshes.length = 0;
   buildKeys();
   const group = new THREE.Group();
   const hg = headGeometry();
-  group.add(new THREE.Mesh(hg, fillMat), new THREE.Mesh(hg, outlineMat));
+  group.add(fillMesh(hg), new THREE.Mesh(hg, outlineMat));
 
   const neckLen = 1.35, ng = new THREE.CylinderGeometry(P.neckR, P.neckR * 1.08, neckLen, 48, 1, false);
-  const neck = new THREE.Group(); neck.add(new THREE.Mesh(ng, fillMat), new THREE.Mesh(ng, outlineMat));
+  const neck = new THREE.Group(); neck.add(fillMesh(ng), new THREE.Mesh(ng, outlineMat));
   const k = .25, top = new THREE.Vector3(0, -.42, -.24), dir = new THREE.Vector3(0, -1, -k).normalize();
   neck.position.copy(top.clone().addScaledVector(dir, neckLen / 2)); neck.rotation.x = Math.atan(k);
   group.add(neck);
@@ -449,13 +531,26 @@ function buildHead() {
   const nTip = [nTip0[0], nTip0[1] + .02, nTip0[2] + P.noseLen];
   add("feat", [[nRoot, nTip], [wL, nTip, wR], [wL, wR]]);
   const nG = new THREE.BufferGeometry(); nG.setAttribute("position", new THREE.Float32BufferAttribute([...nRoot, ...wL, ...nTip, ...nRoot, ...nTip, ...wR, ...wL, ...wR, ...nTip], 3)); nG.computeVertexNormals();
-  group.add(new THREE.Mesh(nG, fillMat));
+  group.add(fillMesh(nG));
   // Gitter
   for (let i = 0; i < 12; i++) { if (i === 0 || i === 6) continue; const ph = -PI + i * PI / 6; add("grid", sample(s => surfY(ph, lerp(1, Bc(ph)[1], s)), 70)); }
   for (const Y of [.75, .45, -.45, -.9]) add("grid", sample(s => surfY(lerp(-PI, PI, s), Y), 160));
 
+  // Kopf in der Box: Quader um Schädel und Gesicht, optional mit verlängerten Kanten Richtung Fluchtpunkte
+  const bx = P.sx, bt = 1, bb = -P.L, bz = P.sz;
+  const C = [[-bx, bt, bz], [bx, bt, bz], [bx, bb, bz], [-bx, bb, bz], [-bx, bt, -bz], [bx, bt, -bz], [bx, bb, -bz], [-bx, bb, -bz]];
+  const E = [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7]];
+  add("box", E.map(([a, b]) => [C[a], C[b]]));
+  const vp = new THREE.Group();
+  for (const [a, b] of E) {
+    const pa = new THREE.Vector3(...C[a]), pb = new THREE.Vector3(...C[b]), d = pb.clone().sub(pa).normalize();
+    const p0 = pa.clone().addScaledVector(d, -14), p1 = pb.clone().addScaledVector(d, 14);
+    const g = new THREE.LineGeometry(); g.setPositions([p0.x, p0.y, p0.z, p1.x, p1.y, p1.z]);
+    const l = new THREE.Line2(g, vpMat); l.computeLineDistances(); l.renderOrder = 4; vp.add(l);
+  }
+  group.add(vp);
   for (const c of Object.keys(CATS)) group.add(lines[c][0], lines[c][1]);
-  headParts = { group, lines, neck };
+  headParts = { group, lines, neck, vp };
   head.add(group);
   applyVisibility();
 }
@@ -466,9 +561,19 @@ function applyVisibility() {
     headParts.lines[c][1].visible = !!S.show[c] && S.show.hidden;
   }
   headParts.neck.visible = S.show.neck;
-  fillMat.colorWrite = S.show.fill && !overlayOn();
-  hemi.color.set(0xffffff); hemi.groundColor.set(S.show.shade ? 0x8f9aa4 : 0xffffff);
-  hemi.intensity = S.show.shade ? .78 : 1; dirL.intensity = S.show.shade ? .38 : 0;
+  headParts.vp.visible = S.show.vp;
+  headParts.group.visible = !practiceHidden;
+  fillMat.colorWrite = celMat.colorWrite = S.show.fill && !overlayOn();
+  const mat = S.shadeMode === "cel" ? celMat : fillMat;
+  for (const m of fillMeshes) m.material = mat;
+  hemi.color.set(0xffffff);
+  if (S.shadeMode === "off") { hemi.groundColor.set(0xffffff); hemi.intensity = 1; dirL.intensity = 0; }
+  else if (S.shadeMode === "soft") { hemi.groundColor.set(0x8f9aa4); hemi.intensity = .72; dirL.intensity = .45; }
+  else { hemi.groundColor.set(0xffffff); hemi.intensity = .38; dirL.intensity = .75; }
+  const az = rad(S.light), el = rad(35);
+  // Licht hängt an der Kamera; großer Abstand, damit die Richtung nicht von der Kameraposition überdeckt wird
+  dirL.position.set(Math.sin(az) * Math.cos(el) * 60, Math.sin(el) * 60, Math.cos(az) * Math.cos(el) * 60);
+  $("#light-row").hidden = S.shadeMode === "off";
   requestRender();
 }
 
@@ -505,12 +610,14 @@ new ResizeObserver(resize).observe(stage);
 /* ---------- UI-Bindung ---------- */
 const sl = {
   yaw: [$("#s-yaw"), $("#o-yaw")], pitch: [$("#s-pitch"), $("#o-pitch")], roll: [$("#s-roll"), $("#o-roll")],
-  persp: [$("#s-persp"), $("#o-persp")], lw: [$("#s-lw"), $("#o-lw")], ovop: [$("#s-ovop"), $("#o-ovop")]
+  persp: [$("#s-persp"), $("#o-persp")], style: [$("#s-style"), $("#o-style")], light: [$("#s-light"), $("#o-light")], lw: [$("#s-lw"), $("#o-lw")], ovop: [$("#s-ovop"), $("#o-ovop")]
 };
 function wrapYaw(v) { while (v > 180) v -= 360; while (v < -180) v += 360; return v; }
 function syncUI() {
   for (const k of ["yaw", "pitch", "roll"]) { sl[k][0].value = Math.round(S[k]); sl[k][1].textContent = fmt(S[k]); }
   sl.persp[0].value = S.persp; sl.persp[1].textContent = Math.round(lerp(6, 62, S.persp / 100)) + "° Bildwinkel";
+  sl.style[0].value = S.style; sl.style[1].textContent = styleName(S.style) + " · " + Math.round(S.style);
+  sl.light[0].value = S.light; sl.light[1].textContent = S.light === 0 ? "von vorn" : (S.light < 0 ? "von links " : "von rechts ") + Math.abs(S.light) + "°";
   sl.lw[0].value = S.lw; sl.lw[1].textContent = S.lw.toFixed(1) + "×";
   sl.ovop[0].value = S.ovop; sl.ovop[1].textContent = S.ovop + " %";
   $("#ro-yaw").textContent = fmt(S.yaw); $("#ro-pitch").textContent = fmt(S.pitch); $("#ro-roll").textContent = fmt(S.roll);
@@ -529,7 +636,13 @@ for (const k of Object.keys(S.show)) {
   const el = $("#t-" + k); if (!el) continue; el.checked = !!S.show[k];
   el.addEventListener("change", () => { S.show[k] = el.checked; applyVisibility(); persist(); if (k === "pip") renderMatches(); });
 }
-document.querySelectorAll("input[name=preset]").forEach(r => { r.checked = r.value === S.preset; r.addEventListener("change", () => { S.preset = r.value; P = PRESETS[S.preset]; buildHead(); persist(); }); });
+let styleRaf = 0;
+sl.style[0].addEventListener("input", e => {
+  S.style = +e.target.value; syncUI(); persist();
+  if (!styleRaf) styleRaf = requestAnimationFrame(() => { styleRaf = 0; P = paramsFor(S.style); buildHead(); });
+});
+sl.light[0].addEventListener("input", e => { S.light = +e.target.value; syncUI(); applyVisibility(); persist(); });
+document.querySelectorAll("input[name=shade]").forEach(r => { r.checked = r.value === S.shadeMode; r.addEventListener("change", () => { S.shadeMode = r.value; applyVisibility(); persist(); }); });
 document.querySelectorAll("input[name=mode]").forEach(r => r.addEventListener("change", () => { mode = r.value; stage.classList.toggle("mode-move", mode === "move"); }));
 $("#btn-reset-view").addEventListener("click", () => { S.zoom = 1; S.panX = 0; S.panY = 0; requestRender(); persist(); });
 
@@ -550,7 +663,7 @@ stage.addEventListener("pointermove", e => {
     S.zoom = clamp(pinch0.z * d / Math.max(1, pinch0.d), .3, 4); requestRender(); persist(); return;
   }
   if (mode === "move" || e.shiftKey) { S.panX += dx * unitsPerPx; S.panY -= dy * unitsPerPx; requestRender(); persist(); }
-  else setAngles(S.yaw + dx * .45, S.pitch + dy * .45, S.roll);
+  else if (!practiceHidden) setAngles(S.yaw + dx * .45, S.pitch + dy * .45, S.roll);
 });
 const endPtr = e => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = null; if (!ptrs.size) stage.classList.remove("dragging"); };
 stage.addEventListener("pointerup", endPtr); stage.addEventListener("pointercancel", endPtr);
@@ -559,8 +672,9 @@ document.addEventListener("keydown", e => {
   if (e.target.closest("input, textarea, select")) return;
   const st = e.shiftKey ? 15 : 5;
   const m = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, -st], ArrowDown: [0, st] }[e.key];
-  if (m) { e.preventDefault(); setAngles(S.yaw + m[0], S.pitch + m[1], S.roll); }
+  if (m && !practiceHidden) { e.preventDefault(); setAngles(S.yaw + m[0], S.pitch + m[1], S.roll); }
   else if (e.key === "f" || e.key === "F") toggleFocus();
+  else if (e.key === "Escape" && !$("#gallery").hidden) closeGallery();
   else if (e.key === "Escape" && document.body.classList.contains("focus")) toggleFocus();
 });
 
@@ -708,6 +822,9 @@ function renderMatches() {
   $("#matches-empty").hidden = list.length > 0;
   $("#matches-empty").textContent = sorted ? "Kein Bild liegt innerhalb von 30° Abweichung. Dreh weiter oder ordne mehr Bilder ein." : "Noch keine eingeordneten Bilder. Lade unten Anime-Screenshots hoch und speichere zu jedem den Winkel.";
   $("#match-count").textContent = sorted ? `${list.length} von ${sorted}` : "";
+  const near = all.filter(m => m.d <= 30).length;
+  $("#btn-gallery").textContent = sorted ? `Beispiele zu dieser Drehung (${near})` : "Beispiele zu dieser Drehung";
+  if (!$("#gallery").hidden) renderGallery();
   for (const m of list) {
     const b = document.createElement("button"); b.type = "button"; b.className = "thumb" + (m.r.id === activeId ? " sel" : "");
     b.setAttribute("aria-label", `Beispiel, ${Math.round(m.d)}° Abweichung${m.flip ? ", gespiegelt" : ""}`);
@@ -717,7 +834,7 @@ function renderMatches() {
     box.append(b);
   }
   const pip = $("#pip"), best = all[0];
-  if (S.show.pip && best && best.d <= 35 && !(overlayOn() && best.r.id === activeId)) {
+  if (S.show.pip && !practiceHidden && best && best.d <= 35 && !(overlayOn() && best.r.id === activeId)) {
     pip.hidden = false; const im = $("#pip-img"); if (im.getAttribute("src") !== best.r.src) im.src = best.r.src;
     im.classList.toggle("flip", best.flip); $("#pip-dev").textContent = Math.round(best.d) + "°" + (best.flip ? " gespiegelt" : "");
     pip.onclick = () => selectRef(best.r.id, best.flip);
@@ -787,6 +904,76 @@ $("#btn-del-yes").addEventListener("click", async () => {
   try { await store.remove(id); activeId = null; onRefs(); setNote("#upload-note", "Bild gelöscht."); }
   catch (e) { setNote("#upload-note", "Löschen fehlgeschlagen (" + (e && e.code || "Fehler") + ").", true); }
 });
+
+/* ---------- Galerie ---------- */
+let gMax = 30;
+function renderGallery() {
+  const list = bestMatches().filter(m => m.d <= gMax), grid = $("#g-grid");
+  grid.replaceChildren();
+  $("#g-title").textContent = `Beispiele für ${fmt(S.yaw)} / ${fmt(S.pitch)} / ${fmt(S.roll)}`;
+  const sorted = refs.filter(r => r.yaw != null).length;
+  $("#g-empty").hidden = list.length > 0;
+  $("#g-empty").textContent = !sorted ? "Noch keine eingeordneten Bilder. Lade in der Bildsammlung Screenshots hoch und speichere zu jedem den Winkel."
+    : `Kein Bild innerhalb von ${gMax}°. Wähle „alle“ oder dreh den Kopf etwas.`;
+  for (const m of list) {
+    const c = document.createElement("div"); c.className = "gcard";
+    const im = document.createElement("img"); im.src = m.r.src; im.alt = "Beispielbild"; im.loading = "lazy"; if (m.flip) im.className = "flip";
+    const meta = document.createElement("div"); meta.className = "meta";
+    meta.innerHTML = `<b>${Math.round(m.d)}° Abweichung</b><span>${m.flip ? "gespiegelt" : ""}</span>`;
+    const row = document.createElement("div"); row.className = "row";
+    const b1 = document.createElement("button"); b1.type = "button"; b1.className = "btn primary"; b1.textContent = "Über den Kopf legen";
+    b1.addEventListener("click", () => { closeGallery(); selectRef(m.r.id, m.flip); });
+    const b2 = document.createElement("button"); b2.type = "button"; b2.className = "btn"; b2.textContent = "Kopf auf dieses Bild";
+    b2.addEventListener("click", () => { closeGallery(); m.flip ? setAngles(-m.r.yaw, m.r.pitch, -m.r.roll) : setAngles(m.r.yaw, m.r.pitch, m.r.roll); });
+    row.append(b1, b2); c.append(im, meta, row); grid.append(c);
+  }
+}
+let galleryReturn = null;
+function openGallery() { galleryReturn = document.activeElement; $("#gallery").hidden = false; renderGallery(); $("#g-close").focus(); }
+function closeGallery() { $("#gallery").hidden = true; if (galleryReturn && galleryReturn.focus) galleryReturn.focus(); }
+$("#btn-gallery").addEventListener("click", openGallery);
+$("#g-close").addEventListener("click", closeGallery);
+document.querySelectorAll("input[name=gmax]").forEach(r => r.addEventListener("change", () => { gMax = +r.value; renderGallery(); }));
+
+/* ---------- Übungsmodus ---------- */
+function describe(y, p, r) {
+  const ay = Math.abs(y), side = y > 0 ? "nach rechts" : "nach links";
+  let s = ay < 12 ? "Frontal" : ay < 35 ? "Leicht " + side + " gedreht" : ay < 65 ? "Dreiviertel " + side : ay < 115 ? "Profil " + side : "Von hinten, " + side + " gedreht";
+  const ap = Math.abs(p);
+  if (ap >= 8) s += ", " + (ap < 25 ? "leicht " : "") + (p > 0 ? "von oben gesehen" : "von unten gesehen");
+  if (Math.abs(r) >= 8) s += ", Kopf zur " + (r > 0 ? "linken" : "rechten") + " Seite geneigt";
+  return s;
+}
+let practiceHidden = false, prTimer = 0, prEnd = 0;
+function prTick() {
+  const left = Math.max(0, Math.round((prEnd - Date.now()) / 1000)), el = $("#pr-clock");
+  el.textContent = Math.floor(left / 60) + ":" + String(left % 60).padStart(2, "0");
+  if (left <= 0) { clearInterval(prTimer); prTimer = 0; revealPractice(); }
+}
+function updatePracticeExample() {
+  const ex = $("#pr-ex"), best = bestMatches()[0];
+  if ($("#pr-show-ex").checked && best && best.d <= 20) { ex.src = best.r.src; ex.classList.toggle("flip", best.flip); ex.hidden = false; }
+  else ex.hidden = true;
+}
+function newPractice() {
+  const y = Math.round(Math.random() * 220 - 110), p = Math.round(Math.random() * 80 - 40), r = Math.round(Math.random() * 30 - 15);
+  practiceHidden = true; setAngles(y, p, r);
+  $("#pr-task").textContent = describe(y, p, r);
+  $("#pr-nums").textContent = `Drehung ${fmt(y)} · Neigung ${fmt(p)} · Kippung ${fmt(r)}`;
+  $("#pr-reveal").disabled = false; $("#pip").hidden = true;
+  updatePracticeExample(); applyVisibility();
+  clearInterval(prTimer); prTimer = 0;
+  const sec = +$("#pr-time").value;
+  if (sec) { prEnd = Date.now() + sec * 1000; $("#pr-clock").hidden = false; prTick(); prTimer = setInterval(prTick, 250); }
+  else $("#pr-clock").hidden = true;
+}
+function revealPractice() { practiceHidden = false; $("#pr-reveal").disabled = true; clearInterval(prTimer); prTimer = 0; applyVisibility(); renderMatches(); }
+function endPractice() { revealPractice(); $("#practice").hidden = true; $("#btn-gallery").hidden = false; }
+$("#btn-practice").addEventListener("click", () => { $("#practice").hidden = false; $("#btn-gallery").hidden = true; newPractice(); });
+$("#pr-next").addEventListener("click", newPractice);
+$("#pr-reveal").addEventListener("click", revealPractice);
+$("#pr-end").addEventListener("click", endPractice);
+$("#pr-show-ex").addEventListener("change", updatePracticeExample);
 
 /* ---------- Start ---------- */
 syncUI(); buildHead(); resize(); renderMatches();
