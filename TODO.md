@@ -71,7 +71,7 @@ Bekannt: Pi 4B hat nur ca. 1 GB RAM frei. Dateien im Ordner gehören `simon`, sc
 ## Simon (offen)
 
 - [ ] PC in der Fritzbox auf 192.168.178.135 reservieren
-- [ ] `bericht2.html` ansehen (Finder: ⌘K → `smb://192.168.178.80/usb-share` → `sketch-help`): stimmen Geschlecht, Haarlänge, Rahmen?
+- [x] `bericht2.html` geprüft: deutlich besser als Lauf 1, sieht gut aus (Bericht in Safari öffnen, die Vorschau lädt keine Bilder)
 
 ## Aufräumen auf dem Pi
 

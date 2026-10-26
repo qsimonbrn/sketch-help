@@ -78,6 +78,9 @@ Winkel per `solvePnP`), das Vision-Modell nur noch für Schlagworte nutzen.
 | Bildbereiche | Mehr Arten (Mund 11, Nase 7, Gesicht 5, Haare 2), aber weiter lückenhaft |
 | Stabilität | Geschlecht in 50/61, Haarlänge in 42/61 Fällen gleich wie in Lauf 1 |
 
+**Sichtprüfung durch Simon (26.10.2026):** Bericht 2 „sieht echt gut aus, deutlich besser als der erste“
+(Schlagworte und Rahmen). Die Vorverarbeitung (EXIF, 1280 px) war der entscheidende Schritt.
+
 ## Entscheidung (26.10.2026)
 
 - **Exakte Winkelbeispiele** kommen aus 3D-Anime-Figuren des VRoid-Projekts, die laut zwei unabhängigen
