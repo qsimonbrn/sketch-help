@@ -4,7 +4,7 @@
 Nur Standardbibliothek, läuft auf Pi, Mac oder PC.
 
     python3 analyse_test.py --dir ./testbilder --out ergebnis.jsonl \
-        --ollama http://192.168.178.134:11434 --model qwen3.5:9b
+        --ollama http://192.168.178.135:11434 --model qwen3.5:9b
 
 Je Bild eine JSON-Zeile mit Schlagworten, Kopfwinkel, Merkmal-Bereichen und Laufzeit.
 Bereits ausgewertete Bilder werden übersprungen, ein Abbruch kostet also nichts.
