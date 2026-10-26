@@ -54,3 +54,17 @@ Stufe 2 nur, wenn Stufe 1 nicht reicht.
 - Umsetzung auf dem Pi gehört ins Raspi-Projekt (neuer Stack, Doku, `pi-guard.sh`).
 - Mit dem Umzug ersetzt die Pi-API den Artefakt-Speicher. Die Speicherschicht der App ist
   bereits austauschbar angelegt (Cloud-, Lokal-Adapter); ein Pi-Adapter kommt dazu.
+
+## Testlauf 1 (26.10.2026, 61 Bilder, `qwen3.5:9b`)
+
+| Messung | Ergebnis | Bewertung |
+|---|---|---|
+| Laufzeit | 8,6 s pro Bild (erstes Bild 40 s, Modell laden) | 2000 Bilder ≈ 4,5 h, als Nachtlauf tragbar |
+| Bildformat | 5712×4284 px, 52 von 61 mit EXIF-Drehung 6 (90°) | Das Modell bekommt die Rohpixel, also seitlich liegende Bilder. Vorverarbeitung nötig: EXIF anwenden, auf ca. 1280 px verkleinern |
+| Kopfwinkel | Stark gerastert: Drehung fast nur −45/−15/−10/−5/±90, Sicherheit fast immer 0,9 | Keine echte Schätzung, eher Kategorien; Sicherheitswert ohne Aussage |
+| Bildbereiche | 98 Rahmen, davon 61× `auge_links`, 36× `auge_rechts`, 1× Mund; kein Gesicht, keine Haare | Für automatisches Zuschneiden so unbrauchbar |
+| Schlagworte | Art, Geschlecht, Haarlänge, Frisur plausibel verteilt | Noch nicht gegen Handwerte geprüft |
+
+Folgerungen: erst Vorverarbeitung, dann zweiter Lauf. Für Rahmen und Winkel einen spezialisierten
+Anime-Gesichtsdetektor mit Gesichtspunkten prüfen (Rahmen für Gesicht, Augen, Mund direkt aus den Punkten,
+Winkel per `solvePnP`), das Vision-Modell nur noch für Schlagworte nutzen.
