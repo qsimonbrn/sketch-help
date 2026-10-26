@@ -116,6 +116,9 @@ body.focus .app{grid-template-rows:minmax(0,1fr)}
 body.focus .main{grid-template-columns:minmax(0,1fr)}
 
 .stage-btn{position:absolute;left:calc(12px + env(safe-area-inset-left,0px));top:12px}
+.eyes{display:grid;gap:8px}
+.eyes summary{cursor:pointer;font-size:14px;font-weight:500;display:flex;gap:8px;align-items:baseline}
+.eyes[open]{padding-bottom:4px}
 .styleticks{grid-column:1/-1;display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:11px;color:var(--muted)}
 .practice{position:absolute;left:50%;top:12px;transform:translateX(-50%);width:min(420px,calc(100% - 24px));background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:12px;display:grid;gap:10px;box-shadow:0 6px 24px rgb(0 0 0 / .12)}
 .practice .task{font-family:var(--f-display);font-weight:600;font-size:19px;line-height:1.2;text-wrap:balance}
@@ -215,8 +218,16 @@ body.focus .stage-btn{display:none}
 
       <section class="sec">
         <h2>Ansicht</h2>
-        <div class="slider"><label for="s-style">Stil</label><output id="o-style"></output><input type="range" id="s-style" min="0" max="100" step="1">
+        <div class="slider"><label for="s-style">Stil</label><output id="o-style"></output><input type="range" id="s-style" min="0" max="100" step="1" list="style-marks"><datalist id="style-marks"><option value="0"></option><option value="50"></option><option value="100"></option></datalist>
           <div class="styleticks" aria-hidden="true"><span>Realistisch</span><span>Anime</span><span>Chibi</span></div></div>
+        <details class="eyes" id="eyes-box">
+          <summary>Augen anpassen <span class="note" id="eyes-sum"></span></summary>
+          <div class="slider"><label for="s-eyedist">Abstand</label><output id="o-eyedist"></output><input type="range" id="s-eyedist" min="-50" max="50" step="1" list="zero-mark"></div>
+          <div class="slider"><label for="s-eyesize">Größe</label><output id="o-eyesize"></output><input type="range" id="s-eyesize" min="-50" max="50" step="1" list="zero-mark"></div>
+          <div class="slider"><label for="s-eyeheight">Höhe</label><output id="o-eyeheight"></output><input type="range" id="s-eyeheight" min="-50" max="50" step="1" list="zero-mark"></div>
+          <datalist id="zero-mark"><option value="0"></option></datalist>
+          <button class="btn" type="button" id="btn-eyes-reset">Augen zurücksetzen</button>
+        </details>
         <div class="slider"><label for="s-persp">Perspektive</label><output id="o-persp"></output><input type="range" id="s-persp" min="0" max="100" step="1"></div>
         <div class="slider"><label for="s-lw">Linienstärke</label><output id="o-lw"></output><input type="range" id="s-lw" min="0.5" max="3" step="0.1"></div>
         <div class="chips" id="toggles">
@@ -335,7 +346,7 @@ const sstep = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); retu
 const fmt = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(Math.round(v)) + "°";
 
 /* ---------- Zustand ---------- */
-const DEF = { yaw: 30, pitch: 10, roll: 0, zoom: 1, panX: 0, panY: 0, persp: 30, lw: 1.2, style: 50, shadeMode: "soft", light: -45,
+const DEF = { yaw: 30, pitch: 10, roll: 0, zoom: 1, panX: 0, panY: 0, persp: 30, lw: 1.2, style: 50, shadeMode: "soft", light: -45, eyeDist: 0, eyeSize: 0, eyeHeight: 0,
   show: { axis: true, face: true, feat: true, side: true, grid: false, hidden: true, fill: true, neck: true, pip: true, box: false, vp: false },
   ovop: 50 };
 let S = JSON.parse(JSON.stringify(DEF));
@@ -348,7 +359,7 @@ let mode = "rotate";
 /* ---------- Proportionen ---------- */
 const STYLES = {
   anime:  { sx: .86, sz: .96, L: 1.30, zc: .58, chinW: .06, wj: .66, yj: .88, zj: -.02, earBaseY: -.86, backY: -.78, backZ: -.62,
-            bulgeFront: .03, browY: -.05, eyeY: -.34, eyeX: .40, eyeDx: .19, eyeDy: .13, noseY: -.78, noseLen: .06,
+            bulgeFront: .03, browY: -.05, eyeY: -.34, eyeX: .46, eyeDx: .21, eyeDy: .15, noseY: -.78, noseLen: .06,
             mouthY: -1.02, mouthW: .16, hairY: .42, neckR: .27 },
   loomis: { sx: .90, sz: 1.0, L: 1.62, zc: .84, chinW: .20, wj: .74, yj: 1.12, zj: .02, earBaseY: -.95, backY: -.82, backZ: -.66,
             bulgeFront: .05, browY: 0, eyeY: -.20, eyeX: .36, eyeDx: .15, eyeDy: .055, noseY: -.81, noseLen: .14,
@@ -363,7 +374,13 @@ function paramsFor(v) {
   const o = {}; for (const k of Object.keys(a)) o[k] = lerp(a[k], b[k], t); return o;
 }
 const styleName = v => v < 25 ? "Realistisch" : v < 75 ? "Anime" : "Chibi";
-let P = paramsFor(S.style);
+/* Augen-Korrektur des Nutzers auf den Stil anwenden: Abstand ±0,2 rad, Größe ±50 %, Höhe ±0,2 */
+function currentParams() {
+  const p = paramsFor(S.style), k = 1 + S.eyeSize / 100;
+  p.eyeX += S.eyeDist * .004; p.eyeDx *= k; p.eyeDy *= k; p.eyeY += S.eyeHeight * .004;
+  return p;
+}
+let P = currentParams();
 
 /* Unterer Kontur-Ring (Kinn, Kiefer, Schädelbasis) als geschlossene Catmull-Rom-Kurve über den Winkel phi */
 let KEYS = [];
@@ -616,6 +633,9 @@ function wrapYaw(v) { while (v > 180) v -= 360; while (v < -180) v += 360; retur
 function syncUI() {
   for (const k of ["yaw", "pitch", "roll"]) { sl[k][0].value = Math.round(S[k]); sl[k][1].textContent = fmt(S[k]); }
   sl.persp[0].value = S.persp; sl.persp[1].textContent = Math.round(lerp(6, 62, S.persp / 100)) + "° Bildwinkel";
+  const sgn = v => (v > 0 ? "+" : v < 0 ? "−" : "±") + Math.abs(v);
+  for (const [k, id] of Object.entries({ eyeDist: "eyedist", eyeSize: "eyesize", eyeHeight: "eyeheight" })) { $("#s-" + id).value = S[k]; $("#o-" + id).textContent = sgn(S[k]); }
+  $("#eyes-sum").textContent = (S.eyeDist || S.eyeSize || S.eyeHeight) ? "angepasst" : "";
   sl.style[0].value = S.style; sl.style[1].textContent = styleName(S.style) + " · " + Math.round(S.style);
   sl.light[0].value = S.light; sl.light[1].textContent = S.light === 0 ? "von vorn" : (S.light < 0 ? "von links " : "von rechts ") + Math.abs(S.light) + "°";
   sl.lw[0].value = S.lw; sl.lw[1].textContent = S.lw.toFixed(1) + "×";
@@ -638,9 +658,18 @@ for (const k of Object.keys(S.show)) {
 }
 let styleRaf = 0;
 sl.style[0].addEventListener("input", e => {
-  S.style = +e.target.value; syncUI(); persist();
-  if (!styleRaf) styleRaf = requestAnimationFrame(() => { styleRaf = 0; P = paramsFor(S.style); buildHead(); });
+  let v = +e.target.value; if (Math.abs(v - 50) <= 4) { v = 50; e.target.value = 50; }  // rastet bei Anime ein
+  S.style = v; syncUI(); persist();
+  if (!styleRaf) styleRaf = requestAnimationFrame(() => { styleRaf = 0; P = currentParams(); buildHead(); });
 });
+const eyeSl = { eyeDist: "eyedist", eyeSize: "eyesize", eyeHeight: "eyeheight" };
+let eyeRaf = 0;
+const rebuildSoon = () => { if (!eyeRaf) eyeRaf = requestAnimationFrame(() => { eyeRaf = 0; P = currentParams(); buildHead(); }); };
+for (const [k, id] of Object.entries(eyeSl)) $("#s-" + id).addEventListener("input", e => {
+  let v = +e.target.value; if (Math.abs(v) <= 3) { v = 0; e.target.value = 0; }
+  S[k] = v; syncUI(); persist(); rebuildSoon();
+});
+$("#btn-eyes-reset").addEventListener("click", () => { S.eyeDist = S.eyeSize = S.eyeHeight = 0; syncUI(); persist(); rebuildSoon(); });
 sl.light[0].addEventListener("input", e => { S.light = +e.target.value; syncUI(); applyVisibility(); persist(); });
 document.querySelectorAll("input[name=shade]").forEach(r => { r.checked = r.value === S.shadeMode; r.addEventListener("change", () => { S.shadeMode = r.value; applyVisibility(); persist(); }); });
 document.querySelectorAll("input[name=mode]").forEach(r => r.addEventListener("change", () => { mode = r.value; stage.classList.toggle("mode-move", mode === "move"); }));
