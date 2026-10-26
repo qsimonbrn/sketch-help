@@ -47,7 +47,11 @@ per Dateiname an die Einträge gehängt (Feld `analyse`), Simon prüft Schlagwor
       Seitenwort des Modells unbrauchbar (nie „links“), Rahmen spiegeln korrekt
 - [x] Drehrichtung aus den Rahmen ableiten (Version 5, `--nachberechnen`); Schwelle 0,15 per Kontaktbogen geprüft
 - [ ] Grenzfälle „leicht gedreht“: Schwelle ggf. nachschärfen, wenn die App-Beispiele danebenliegen
-- [ ] Ergebnis importieren (erst danach, sonst landen links gedrehte Köpfe als „rechts“ in der App)
+- [x] Ergebnis importiert (26.10.2026, `ergebnis3_rahmen.jsonl`, 40 Einträge per `import_analyse.py`, gegengelesen);
+      Rückweg: `ergebnis2.jsonl` liegt noch auf dem Pi
+- [ ] In der App prüfen: „Vorschlag“ bei IMG_0489/0444 muss „Dreiviertel nach links“ zeigen und der Kopf dann
+      wirklich nach links blicken (Vorzeichen yaw ↔ 3D-Kopf ist noch nicht gegengeprüft)
+- [ ] IMG_0480 (Augen-Nahaufnahme) in der App aussortieren; „brauchbar“ des Modells hat sie durchgelassen
 - [ ] App: Bilder auf den Figur-Rahmen zugeschnitten anzeigen (Sammlung, Overlay, Beispiele)
 - [ ] Duplikaterkennung verbessern: dHash war unzuverlässig (0483/0484 als ähnlich gemeldet, sind verschiedene Figuren)
 

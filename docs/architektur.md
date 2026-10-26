@@ -128,3 +128,5 @@ unter 0,15 frontal. Profil und hinten vom Modell, beim Profil die Seite aus der 
 Sichtprüfung am Kontaktbogen (Claude): klare Fälle stimmen (0437, 0441 rechts; 0444, 0489 links; 0463, 0485
 rechts statt frontal). Grenzfälle um ±0,15 sind Ermessenssache. 0480 ist eine Augen-Nahaufnahme und
 müsste unbrauchbar sein; 0454 (Profil) hat einen falschen Nasenrahmen, die Seite kommt dort vom Modellwort.
+
+Importiert am 26.10.2026: frontal 21, ¾ links 7, ¾ rechts 5, Profil rechts 6, hinten 1.
