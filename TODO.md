@@ -77,6 +77,20 @@ Bekannt: Pi 4B hat nur ca. 1 GB RAM frei. Dateien im Ordner gehören `simon`, sc
 - [ ] Augenformen an echten Bildern prüfen und nachschärfen (Lidfalte, Wimpernlinie?)
 - [ ] Anime-Augen: Standard wurde nach einem Vergleichsbild nach außen verschoben (`eyeX` 0,46), mit weiteren Bildern prüfen
 
+## 6. Wünsche (Simon, 26.10.2026)
+
+### Hair Generator
+- [ ] Haare als eigene Ebene auf dem Konstruktionskopf: Grundform (Haarkappe) plus Strähnen
+- [ ] Regler für Haarlänge (kurz bis sehr lang), Pony-Länge, Volumen
+- [ ] Frisur-Vorlagen (z. B. kurz/wuschelig, Pony glatt, Zopf, Pferdeschwanz, Twin Tails), dreht perspektivisch mit
+- [ ] Optional: passende Haar-Ausschnitte aus der eigenen Sammlung zur gewählten Länge zeigen (Filter Haarlänge gibt es schon)
+
+### Beispielkopf männlich/weiblich
+- [ ] Umschalter männlich/weiblich für den Konstruktionskopf (kombinierbar mit dem Stil-Regler realistisch/Anime/Chibi)
+- [ ] Unterschiede u. a.: Kiefer breiter und kantiger, Kinn breiter, Hals dicker, Augen schmaler und tiefer, Brauen tiefer und gerader
+- [ ] Gesichtsmerkmale einzeln verändern: Kieferbreite, Kinnlänge und -breite, Wangen, Nasengröße und -länge, Mundbreite, Brauenhöhe
+  (Augen-Regler gibt es schon; zusammen mit Figur-Profilen aus Punkt 5 speichern)
+
 ## Simon (offen)
 
 - [ ] PC in der Fritzbox auf 192.168.178.135 reservieren

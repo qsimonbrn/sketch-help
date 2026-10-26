@@ -24,6 +24,11 @@
 - [ ] Rumpf mit Schultern und Schlüsselbein, damit Kopfdrehung und Halsansatz zusammen sichtbar werden
 - [ ] Eigene Proportionen als Figur-Profil speichern (Augenhöhe, Kinnlänge, Kieferbreite, Augengröße)
 
+## Stufe 2c: Charakter-Baukasten
+
+- [ ] Hair Generator mit Haarlänge, Pony, Volumen, Frisur-Vorlagen
+- [ ] Konstruktionskopf männlich/weiblich, Gesichtsmerkmale einzeln einstellbar (Details in TODO.md, Punkt 6)
+
 ## Stufe 3: Pi und Bildanalyse
 
 Siehe [architektur.md](architektur.md).
