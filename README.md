@@ -19,7 +19,9 @@ gespiegelt.
 | Export | PNG nur Linien oder mit Fläche, transparenter Hintergrund |
 | Beispiele | Upload, Winkel per Overlay zuordnen, Abgleich inkl. Spiegelung, Galerie |
 | Übung | Zufallswinkel, Zeitlimit, Auflösen |
-| Anime-Figur | 3D-Figur (VRM) im selben Winkel: daneben, darunter oder allein; eigene VRM ladbar |
+| Anime-Figur | 3D-Figur (VRM) im selben Winkel: daneben, darunter oder allein; Mimik, Blick, Linienzeichnung; eigene VRM ladbar |
+| Beispiele | Eigene Bilder mit Analyse (Schlagworte, Ausschnitte für Augen/Mund/Nase/Haare), Filter Geschlecht/Haarlänge |
+| Posen | Lieblings-Posen mit Namen speichern |
 | Technik | Three.js 0.185 (ES-Module), `@pixiv/three-vrm` 3.5.5, per jsDelivr |
 | Laufzeit | Claude-Artefakt (Speicher: Artefakt-Assets und -Datenbank) |
 
@@ -28,6 +30,7 @@ gespiegelt.
 ```
 app/index.html     Die App in einer Datei (Three.js r128 per CDN)
 TODO.md            Offene Aufgaben, nach Reihenfolge
+CHANGELOG.md       Änderungen je Version
 docs/roadmap.md    Geplante Ausbaustufen
 docs/architektur.md  Zielbild mit Raspberry Pi und Bildanalyse auf dem PC
 tools/analyse_test.py  Testlauf: Bilder per Ollama verschlagworten (nur Standardbibliothek)

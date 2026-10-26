@@ -1,6 +1,6 @@
 # TODO
 
-Stand: 26.10.2026, 02:35. Reihenfolge = Vorschlag für die nächsten Sitzungen.
+Stand: 26.10.2026, v0.11. Reihenfolge = Vorschlag für die nächsten Sitzungen.
 Hintergrund und Messwerte stehen in [docs/architektur.md](docs/architektur.md), der Plan in [docs/roadmap.md](docs/roadmap.md).
 
 ## 1. Version 5 auf dem iPad prüfen
@@ -40,7 +40,7 @@ per Dateiname an die Einträge (Feld `analyse`), Simon prüft Schlagworte und Vo
 - [x] Analyse importiert (61 Einträge, Feld `analyse`; 2 ältere Einträge ohne Namen bleiben ohne Analyse)
 - [x] Merkmal-Ausschnitte in der App (Augen, Mund, Nase, Haare, Gesicht), sortiert nach Abweichung zur Drehung
 - [x] Testbilder sortiert (Kontaktbogen, Sichtprüfung): 14 unbrauchbar, 7 Duplikate nach `test/_aussortiert/` verschoben, in der App ausgeblendet
-- [ ] Simon prüft `test/_aussortiert/`, danach endgültig löschen
+- [x] Aussortierte endgültig gelöscht (Pi-Ordner und App)
 - [ ] `tools/analyse.py` (zweistufig, mit Figur-Rahmen und „brauchbar“) über die 40 Bilder laufen lassen, sobald der PC an ist
 - [ ] App: Bilder auf den Figur-Rahmen zugeschnitten anzeigen (Sammlung, Overlay, Beispiele)
 - [ ] Duplikaterkennung verbessern: dHash war unzuverlässig (0483/0484 als ähnlich gemeldet, sind verschiedene Figuren)
@@ -68,6 +68,8 @@ Laufzeit mit Vorverarbeitung ca. 5 s pro Bild, 2000 Bilder ≈ 3 h.
 Bekannt: Pi 4B hat nur ca. 1 GB RAM frei. Dateien im Ordner gehören `simon`, schreiben als `sudo -u simon`.
 
 ## 5. Modell verfeinern
+
+- [ ] Linienzeichnung der Figur: Punktlinien entlang der Haarsträhnen reduzieren (z. B. Kanten nur aus Tiefe für Haar-Materialien)
 
 - [ ] Rumpf mit Schultern und Schlüsselbein am Konstruktionskopf
 - [ ] Eigene Proportionen als Profil speichern (Kinnlänge, Kieferbreite; Augen-Regler gibt es schon)

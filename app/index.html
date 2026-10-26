@@ -103,6 +103,9 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-siz
 .thumb img.flip{transform:scaleX(-1)}
 .thumb .tag{position:absolute;left:3px;bottom:3px;font-family:var(--f-mono);font-size:10.5px;background:var(--surface);color:var(--ink);border-radius:3px;padding:1px 4px;font-variant-numeric:tabular-nums}
 .thumb .dot{position:absolute;right:4px;top:4px;width:8px;height:8px;border-radius:50%;background:var(--red);border:1.5px solid var(--surface)}
+.pose{display:inline-flex}
+.pose .btn:first-child{border-radius:6px 0 0 6px}
+.pose .pose-x{border-radius:0 6px 6px 0;border-left:0;padding:6px 8px;color:var(--muted)}
 .thumb.hid{opacity:.45}
 .thumb.sel{outline:2px solid var(--blue);outline-offset:1px}
 .card{display:grid;gap:10px;border:1px solid var(--rule);border-radius:8px;padding:10px;background:var(--paper)}
@@ -230,6 +233,11 @@ body.focus .stage-btn{display:none}
           <button class="btn" type="button" data-p="30,-30,0">Von unten</button>
           <button class="btn" type="button" id="btn-random">Zufall</button>
         </div>
+        <div class="row" style="align-items:center">
+          <input id="pose-name" class="btn" type="text" placeholder="Name für diese Pose" maxlength="40" style="flex:1;min-width:0;cursor:text">
+          <button class="btn" type="button" id="btn-pose-save">Pose merken</button>
+        </div>
+        <div class="chips" id="poses"></div>
       </section>
 
       <section class="sec">
@@ -249,6 +257,24 @@ body.focus .stage-btn{display:none}
           <input type="file" id="vrm-in" accept=".vrm" hidden>
           <button class="btn" type="button" id="btn-vrm">Eigene VRM-Figur laden</button>
         </div>
+        <div class="row" style="align-items:center;justify-content:space-between">
+          <label for="fig-mimik" style="font-size:14px;font-weight:500">Mimik</label>
+          <select id="fig-mimik" class="btn">
+            <option value="neutral">Neutral</option><option value="happy">Fröhlich</option><option value="angry">Wütend</option>
+            <option value="sad">Traurig</option><option value="relaxed">Entspannt</option><option value="surprised">Überrascht</option><option value="blink">Augen zu</option>
+          </select>
+        </div>
+        <div class="row" style="align-items:center;justify-content:space-between">
+          <span style="font-size:14px;font-weight:500">Blick</span>
+          <div class="seg" role="radiogroup" aria-label="Blickrichtung">
+            <label><input type="radio" name="blick" value="gerade"><span>gerade</span></label>
+            <label><input type="radio" name="blick" value="links"><span>links</span></label>
+            <label><input type="radio" name="blick" value="rechts"><span>rechts</span></label>
+            <label><input type="radio" name="blick" value="oben"><span>oben</span></label>
+            <label><input type="radio" name="blick" value="unten"><span>unten</span></label>
+          </div>
+        </div>
+        <label class="chip"><input type="checkbox" id="t-figline"><span>Figur als Linienzeichnung</span></label>
         <p class="note" id="fig-note">Figur wird geladen …</p>
         <details class="eyes" id="eyes-box">
           <summary>Augen anpassen <span class="note" id="eyes-sum"></span></summary>
@@ -308,6 +334,23 @@ body.focus .stage-btn{display:none}
 
       <section class="sec">
         <h2>Beispiele zu dieser Drehung <em id="match-count"></em></h2>
+        <div class="row" style="align-items:center;justify-content:space-between">
+          <span style="font-size:14px;font-weight:500">Geschlecht</span>
+          <div class="seg" role="radiogroup" aria-label="Filter Geschlecht">
+            <label><input type="radio" name="fg" value="alle"><span>Alle</span></label>
+            <label><input type="radio" name="fg" value="weiblich"><span>weiblich</span></label>
+            <label><input type="radio" name="fg" value="maennlich"><span>männlich</span></label>
+          </div>
+        </div>
+        <div class="row" style="align-items:center;justify-content:space-between">
+          <span style="font-size:14px;font-weight:500">Haare</span>
+          <div class="seg" role="radiogroup" aria-label="Filter Haarlänge">
+            <label><input type="radio" name="fh" value="alle"><span>Alle</span></label>
+            <label><input type="radio" name="fh" value="kurz"><span>kurz</span></label>
+            <label><input type="radio" name="fh" value="mittel"><span>mittel</span></label>
+            <label><input type="radio" name="fh" value="lang"><span>lang</span></label>
+          </div>
+        </div>
         <div class="thumbs" id="matches"></div>
         <p class="note" id="matches-empty">Noch keine eingeordneten Bilder. Lade unten Anime-Screenshots hoch und speichere zu jedem den Winkel.</p>
       </section>
@@ -412,7 +455,7 @@ const sstep = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); retu
 const fmt = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(Math.round(v)) + "°";
 
 /* ---------- Zustand ---------- */
-const DEF = { yaw: 30, pitch: 10, roll: 0, zoom: 1, panX: 0, panY: 0, persp: 30, lw: 1.2, style: 50, shadeMode: "soft", light: -45, eyeDist: 0, eyeSize: 0, eyeHeight: 0, fig: "side", figClip: true, eyeShape: "anime", iris: true, feat: "auge",
+const DEF = { yaw: 30, pitch: 10, roll: 0, zoom: 1, panX: 0, panY: 0, persp: 30, lw: 1.2, style: 50, shadeMode: "soft", light: -45, eyeDist: 0, eyeSize: 0, eyeHeight: 0, fig: "side", figClip: true, eyeShape: "anime", iris: true, feat: "auge", fg: "alle", fh: "alle", mimik: "neutral", blick: "gerade", figLine: false,
   show: { axis: true, face: true, feat: true, side: true, grid: false, hidden: true, fill: true, neck: true, pip: true, box: false, vp: false },
   ovop: 50 };
 let S = JSON.parse(JSON.stringify(DEF));
@@ -503,7 +546,7 @@ const head = new THREE.Group(); head.rotation.order = "YXZ"; root.add(head);
 const COL = {};
 function readColors() {
   const cs = getComputedStyle(document.documentElement);
-  for (const k of ["blue", "blue-soft", "red", "fill", "stage"]) COL[k] = cs.getPropertyValue("--" + k).trim() || "#888";
+  for (const k of ["blue", "blue-soft", "red", "fill", "stage", "ink"]) COL[k] = cs.getPropertyValue("--" + k).trim() || "#888";
 }
 readColors();
 
@@ -718,6 +761,16 @@ function fitVRM() {
   sc.position.set(-eye.x * k, P.eyeY - eye.y * k, P.sz * .62 - eye.z * k);
   if (parent) parent.add(sc);
 }
+const MIMIK = ["happy", "angry", "sad", "relaxed", "surprised", "blink"];
+const BLICK = { gerade: [0, 0], links: [-25, 0], rechts: [25, 0], oben: [0, 15], unten: [0, -15] };
+/* Gesichtsausdruck und Blickrichtung der Figur setzen (VRM-Ausdrücke und LookAt) */
+function applyFace() {
+  if (!vrm) return;
+  const em = vrm.expressionManager;
+  if (em) { for (const k of MIMIK) em.setValue(k, 0); if (S.mimik !== "neutral") em.setValue(S.mimik, 1); }
+  if (vrm.lookAt) { const [y, p] = BLICK[S.blick] || BLICK.gerade; vrm.lookAt.target = null; vrm.lookAt.yaw = y; vrm.lookAt.pitch = p; }
+  vrm.update(0); requestRender();
+}
 function poseVRM(v) {
   const h = v.humanoid, set = (b, z) => { const n = h.getNormalizedBoneNode(b); if (n) n.rotation.z = z; };
   set("leftUpperArm", -1.2); set("rightUpperArm", 1.2);   // Arme locker nach unten statt T-Pose
@@ -743,12 +796,70 @@ async function loadVRM(src) {
       if (o.material) for (const m of [].concat(o.material)) { m.clippingPlanes = [clipPlane]; m.clipping = true; m.needsUpdate = true; }
     });
     if (vrm) { figPivot.remove(vrm.scene); VRMUtils.deepDispose(vrm.scene); }
-    vrm = v; poseVRM(v); figPivot.add(v.scene); fitVRM();
+    vrm = v; poseVRM(v); figPivot.add(v.scene); fitVRM(); applyFace();
     const meta = v.meta || {};
     setNote("#fig-note", src.name || ("Figur: " + (meta.name || meta.title || "ohne Namen")));
   } catch (e) {
     setNote("#fig-note", "Figur konnte nicht geladen werden: " + (e && e.message || e), true);
   } finally { vrmLoading = false; requestRender(); }
+}
+
+/* ---------- Figur als Linienzeichnung ----------
+   Die Figur wird zweimal in Zwischenbilder gerendert (Farbe; Normalen mit Tiefe). Ein Kantenfilter
+   zeichnet Linien dort, wo Tiefe, Flächenrichtung oder Helligkeit springen: Umriss, Haarsträhnen,
+   Augen und Mund (die stecken bei VRM-Figuren in der Textur). */
+const lineRT = { w: 0, h: 0, color: null, normal: null };
+function ensureRT(w, h) {
+  if (lineRT.w === w && lineRT.h === h) return;
+  if (lineRT.color) { lineRT.color.dispose(); lineRT.normal.depthTexture.dispose(); lineRT.normal.dispose(); }
+  lineRT.color = new THREE.WebGLRenderTarget(w, h);
+  lineRT.normal = new THREE.WebGLRenderTarget(w, h); lineRT.normal.depthTexture = new THREE.DepthTexture(w, h);
+  lineRT.w = w; lineRT.h = h;
+}
+const normalOverride = new THREE.MeshNormalMaterial({ clippingPlanes: [clipPlane], side: THREE.DoubleSide });
+const edgeMat = new THREE.ShaderMaterial({
+  uniforms: { tColor: { value: null }, tNormal: { value: null }, tDepth: { value: null }, texel: { value: new THREE.Vector2() },
+              ink: { value: new THREE.Color(0x1b252e) }, cameraNear: { value: .1 }, cameraFar: { value: 100 } },
+  vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }",
+  fragmentShader: `
+    uniform sampler2D tColor, tNormal, tDepth; uniform vec2 texel; uniform vec3 ink; uniform float cameraNear, cameraFar;
+    varying vec2 vUv;
+    float lin(float d){ float z = d * 2.0 - 1.0; return (2.0 * cameraNear * cameraFar) / (cameraFar + cameraNear - z * (cameraFar - cameraNear)); }
+    float lum(vec4 c){ return dot(c.rgb, vec3(.299, .587, .114)); }
+    void main(){
+      vec4 c0 = texture2D(tColor, vUv); vec3 n0 = texture2D(tNormal, vUv).rgb; float d0 = lin(texture2D(tDepth, vUv).r);
+      float en = 0.0, ed = 0.0, el = 0.0, ea = 0.0;
+      vec2 o[4]; o[0] = vec2(texel.x, 0.0); o[1] = vec2(-texel.x, 0.0); o[2] = vec2(0.0, texel.y); o[3] = vec2(0.0, -texel.y);
+      for (int i = 0; i < 4; i++) {
+        vec2 uv = vUv + o[i]; vec4 c = texture2D(tColor, uv);
+        en += length(texture2D(tNormal, uv).rgb - n0);
+        ed += abs(lin(texture2D(tDepth, uv).r) - d0);
+        el += abs(lum(c) - lum(c0)) * min(c.a, c0.a);
+        ea += abs(c.a - c0.a);
+      }
+      float e = max(max(smoothstep(.75, 1.3, en), smoothstep(.02, .05, ed / max(d0, .001))), max(smoothstep(.24, .45, el), smoothstep(.3, .9, ea)));
+      gl_FragColor = vec4(ink, clamp(e, 0.0, 1.0));
+    }`,
+  transparent: true, depthTest: false, depthWrite: false
+});
+const edgeScene = new THREE.Scene(), orthoCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+edgeScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), edgeMat));
+/* Figur in den Bildausschnitt (CSS-Pixel) zeichnen, wahlweise als Linienzeichnung */
+function renderFig(x, y, w, h) {
+  if (!S.figLine) { renderer.render(figScene, camera); return; }
+  const pr = renderer.getPixelRatio(), pw = Math.max(1, Math.round(w * pr)), ph = Math.max(1, Math.round(h * pr));
+  ensureRT(pw, ph);
+  const scis = renderer.getScissorTest(), auto = renderer.autoClear;
+  renderer.setScissorTest(false); renderer.autoClear = true;
+  renderer.setRenderTarget(lineRT.color); renderer.clear(); renderer.render(figScene, camera);
+  figScene.overrideMaterial = normalOverride;
+  renderer.setRenderTarget(lineRT.normal); renderer.clear(); renderer.render(figScene, camera);
+  figScene.overrideMaterial = null; renderer.setRenderTarget(null);
+  const u = edgeMat.uniforms, k = Math.max(1, S.lw * .8);
+  u.tColor.value = lineRT.color.texture; u.tNormal.value = lineRT.normal.texture; u.tDepth.value = lineRT.normal.depthTexture;
+  u.texel.value.set(k / pw, k / ph); u.cameraNear.value = camera.near; u.cameraFar.value = camera.far; u.ink.value.set(COL.ink || "#1b252e");
+  renderer.setViewport(x, y, w, h); renderer.setScissor(x, y, w, h); renderer.setScissorTest(scis);
+  renderer.autoClear = false; renderer.render(edgeScene, orthoCam); renderer.autoClear = auto;
 }
 
 /* ---------- Kamera & Rendern ---------- */
@@ -787,13 +898,13 @@ function draw() {
   }
   renderer.setScissorTest(false); renderer.setViewport(0, 0, W, H); renderer.clear();
   if (fm === "off") renderer.render(scene, camera);
-  else if (fm === "only") renderer.render(figScene, camera);
-  else if (fm === "over") { renderer.autoClear = false; renderer.render(figScene, camera); renderer.clearDepth(); renderer.render(scene, camera); renderer.autoClear = true; }
+  else if (fm === "only") renderFig(0, 0, W, H);
+  else if (fm === "over") { renderer.autoClear = false; renderFig(0, 0, W, H); renderer.clearDepth(); renderer.render(scene, camera); renderer.autoClear = true; }
   else {
     for (const m of lineMats) m.resolution.set(W / 2, H);
     renderer.autoClear = false; renderer.setScissorTest(true);
     renderer.setViewport(0, 0, W / 2, H); renderer.setScissor(0, 0, W / 2, H); renderer.render(scene, camera);
-    renderer.setViewport(W / 2, 0, W / 2, H); renderer.setScissor(W / 2, 0, W / 2, H); renderer.render(figScene, camera);
+    renderer.setViewport(W / 2, 0, W / 2, H); renderer.setScissor(W / 2, 0, W / 2, H); renderFig(W / 2, 0, W / 2, H);
     renderer.setScissorTest(false); renderer.setViewport(0, 0, W, H); renderer.autoClear = true;
     for (const m of lineMats) m.resolution.set(W, H);
   }
@@ -858,6 +969,11 @@ function setFig(on) {
   applyVisibility();
 }
 $("#btn-fig").addEventListener("click", () => setFig(!figOn));
+$("#fig-mimik").value = S.mimik;
+$("#fig-mimik").addEventListener("change", e => { S.mimik = e.target.value; persist(); if (!figOn) setFig(true); applyFace(); });
+document.querySelectorAll("input[name=blick]").forEach(r => { r.checked = r.value === S.blick; r.addEventListener("change", () => { S.blick = r.value; persist(); if (!figOn) setFig(true); applyFace(); }); });
+$("#t-figline").checked = S.figLine;
+$("#t-figline").addEventListener("change", e => { S.figLine = e.target.checked; persist(); if (!figOn && S.figLine) setFig(true); requestRender(); });
 $("#t-figclip").checked = S.figClip;
 $("#t-figclip").addEventListener("change", e => { S.figClip = e.target.checked; requestRender(); persist(); });
 $("#btn-vrm").addEventListener("click", () => $("#vrm-in").click());
@@ -916,7 +1032,9 @@ async function exportPng(withFill) {
   const prevCW = fillMat.colorWrite;
   applyColors({ blue: "#2B7BBE", "blue-soft": "#93BFE0", red: "#CF3F37", fill: "#FFFFFF" });
   fillMat.colorWrite = withFill;
+  const inkPrev = COL.ink; COL.ink = "#1b252e";  // Linienzeichnung im Export immer dunkel
   draw();
+  COL.ink = inkPrev;
   const url = canvas.toDataURL("image/png");
   fillMat.colorWrite = prevCW; applyColors(COL); draw();
   const bin = atob(url.split(",")[1]), buf = new Uint8Array(bin.length);
@@ -977,6 +1095,10 @@ async function initStore() {
   }
   if (!downloads) { $("#export-row").hidden = true; setNote("#export-note", "Direktes Sichern ist hier nicht verfügbar. Fokus einschalten (Taste F) und ein Bildschirmfoto machen."); }
   try {
+    if (db) {
+      poseDb = db;
+      db.collection("posen").onSnapshot(snap => { poses = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) })); renderPoses(); }, () => loadLocalPoses());
+    } else loadLocalPoses();
     if (assets && db) { store = CloudStore; await store.init(assets, db); setNote("#store-note", "Die Bilder liegen im Artefakt und sind auf allen deinen Geräten verfügbar."); }
     else { store = LocalStore; await store.init(); setNote("#store-note", "Die Bilder liegen nur in diesem Browser. Öffne die Seite in Claude, damit sie geräteübergreifend gespeichert werden."); }
   } catch (e) { store = null; setNote("#store-note", "Kein Speicher verfügbar, Bilder können nicht gesichert werden.", true); }
@@ -1024,10 +1146,17 @@ document.addEventListener("paste", e => { const fs = [...(e.clipboardData?.items
 /* ---------- Abgleich ---------- */
 const quat = (y, p, r) => new THREE.Quaternion().setFromEuler(new THREE.Euler(rad(p), rad(y), rad(r), "YXZ"));
 const angDist = (a, b) => 2 * Math.acos(Math.min(1, Math.abs(a.dot(b)))) * 180 / Math.PI;
+/* Filter nach Schlagworten der Analyse; Bilder ohne Analyse fallen bei aktivem Filter heraus */
+function passFilter(r) {
+  const an = r.analyse;
+  if (S.fg !== "alle" && (!an || an.geschlecht !== S.fg)) return false;
+  if (S.fh !== "alle" && (!an || an.haarlaenge !== S.fh)) return false;
+  return true;
+}
 function bestMatches() {
   const q = quat(S.yaw, S.pitch, S.roll), out = [];
   for (const r of refs) {
-    if (r.yaw == null || r.aussortiert) continue;
+    if (r.yaw == null || r.aussortiert || !passFilter(r)) continue;
     const d1 = angDist(q, quat(r.yaw, r.pitch, r.roll)), d2 = angDist(q, quat(-r.yaw, r.pitch, -r.roll));
     out.push(d2 + .5 < d1 ? { r, d: d2, flip: true } : { r, d: d1, flip: false });
   }
@@ -1126,7 +1255,7 @@ let cropsKey = "";
 function renderCrops() {
   const types = FEAT_TYPES[S.feat] || FEAT_TYPES.auge, q = quat(S.yaw, S.pitch, S.roll), list = [];
   for (const r of refs) {
-    if (r.aussortiert) continue;
+    if (r.aussortiert || !passFilter(r)) continue;
     const ms = ((r.analyse && r.analyse.merkmale) || []).filter(m => types.includes(m.typ) && Array.isArray(m.box) && m.box.length === 4);
     if (!ms.length) continue;
     const ang = refAngles(r); let d = 999, flip = false;
@@ -1149,6 +1278,7 @@ function renderCrops() {
     box.append(el);
   }
 }
+for (const k of ["fg", "fh"]) document.querySelectorAll(`input[name=${k}]`).forEach(r => { r.checked = r.value === S[k]; r.addEventListener("change", () => { S[k] = r.value; persist(); cropsKey = ""; renderMatches(); }); });
 document.querySelectorAll("input[name=feat]").forEach(r => { r.checked = r.value === S.feat; r.addEventListener("change", () => { S.feat = r.value; persist(); renderCrops(); }); });
 
 /* Ergebnis der Bildanalyse (vom Pi/Ollama) anzeigen; der Winkel ist nur ein grober Vorschlag */
@@ -1289,6 +1419,46 @@ $("#pr-next").addEventListener("click", newPractice);
 $("#pr-reveal").addEventListener("click", revealPractice);
 $("#pr-end").addEventListener("click", endPractice);
 $("#pr-show-ex").addEventListener("change", updatePracticeExample);
+
+/* ---------- Lieblings-Posen ----------
+   Im Artefakt in der Datenbank (Sammlung "posen", auf allen Geräten), sonst im Browser. */
+let poses = [], poseDb = null;
+const POSE_KEYS = ["yaw", "pitch", "roll", "style", "eyeDist", "eyeSize", "eyeHeight", "eyeShape", "iris", "persp"];
+function renderPoses() {
+  const box = $("#poses"); box.replaceChildren();
+  for (const p of poses.slice().sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))) {
+    const wrap = document.createElement("span"); wrap.className = "pose";
+    const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = p.name;
+    b.title = `${fmt(p.yaw)} / ${fmt(p.pitch)} / ${fmt(p.roll)} · ${styleName(p.style)}`;
+    b.addEventListener("click", () => applyPose(p));
+    const x = document.createElement("button"); x.type = "button"; x.className = "btn pose-x"; x.textContent = "×"; x.setAttribute("aria-label", "Pose „" + p.name + "“ löschen");
+    x.addEventListener("click", () => deletePose(p));
+    wrap.append(b, x); box.append(wrap);
+  }
+}
+function applyPose(p) {
+  for (const k of POSE_KEYS) if (p[k] !== undefined) S[k] = p[k];
+  P = currentParams(); buildHead(); syncUI(); setAngles(S.yaw, S.pitch, S.roll);
+}
+function loadLocalPoses() { try { poses = JSON.parse(localStorage.getItem("sketchhelp.posen") || "[]"); } catch (e) { poses = []; } renderPoses(); }
+function saveLocalPoses() { try { localStorage.setItem("sketchhelp.posen", JSON.stringify(poses)); } catch (e) {} }
+async function savePose() {
+  const name = ($("#pose-name").value || "").trim() || describe(S.yaw, S.pitch, S.roll);
+  const p = { name: name.slice(0, 40), createdAt: Date.now() }; for (const k of POSE_KEYS) p[k] = S[k];
+  try {
+    if (poseDb) await poseDb.collection("posen").doc().set(p);
+    else { p.id = "p" + Date.now().toString(36); poses.push(p); saveLocalPoses(); renderPoses(); }
+    $("#pose-name").value = "";
+  } catch (e) { setNote("#upload-note", "Pose konnte nicht gespeichert werden (" + (e && e.code || "Fehler") + ").", true); }
+}
+async function deletePose(p) {
+  try {
+    if (poseDb) await poseDb.collection("posen").doc(p.id).delete();
+    else { poses = poses.filter(x => x.id !== p.id); saveLocalPoses(); renderPoses(); }
+  } catch (e) { setNote("#upload-note", "Pose konnte nicht gelöscht werden.", true); }
+}
+$("#btn-pose-save").addEventListener("click", savePose);
+$("#pose-name").addEventListener("keydown", e => { if (e.key === "Enter") savePose(); });
 
 /* ---------- Start ---------- */
 syncUI(); buildHead(); resize(); renderMatches();
