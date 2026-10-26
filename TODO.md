@@ -39,7 +39,11 @@ per Dateiname an die Einträge (Feld `analyse`), Simon prüft Schlagworte und Vo
 - [x] 61 Testbilder in der App hochgeladen (Simon)
 - [x] Analyse importiert (61 Einträge, Feld `analyse`; 2 ältere Einträge ohne Namen bleiben ohne Analyse)
 - [x] Merkmal-Ausschnitte in der App (Augen, Mund, Nase, Haare, Gesicht), sortiert nach Abweichung zur Drehung
-- [ ] Rahmen für Mund, Nase, Haare verbessern: zweistufige Analyse (erst Gesicht, dann Teile im Gesichtsausschnitt)
+- [x] Testbilder sortiert (Kontaktbogen, Sichtprüfung): 14 unbrauchbar, 7 Duplikate nach `test/_aussortiert/` verschoben, in der App ausgeblendet
+- [ ] Simon prüft `test/_aussortiert/`, danach endgültig löschen
+- [ ] `tools/analyse.py` (zweistufig, mit Figur-Rahmen und „brauchbar“) über die 40 Bilder laufen lassen, sobald der PC an ist
+- [ ] App: Bilder auf den Figur-Rahmen zugeschnitten anzeigen (Sammlung, Overlay, Beispiele)
+- [ ] Duplikaterkennung verbessern: dHash war unzuverlässig (0483/0484 als ähnlich gemeldet, sind verschiedene Figuren)
 - [ ] Import als Skript ins Repo (`tools/import_analyse.py`), statt von Hand
 
 Testläufe zeigen: `qwen3.5:9b` schätzt keine brauchbaren Winkel. Entscheidung: nur grobe Ansichten.

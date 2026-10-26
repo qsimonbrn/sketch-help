@@ -103,6 +103,7 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-siz
 .thumb img.flip{transform:scaleX(-1)}
 .thumb .tag{position:absolute;left:3px;bottom:3px;font-family:var(--f-mono);font-size:10.5px;background:var(--surface);color:var(--ink);border-radius:3px;padding:1px 4px;font-variant-numeric:tabular-nums}
 .thumb .dot{position:absolute;right:4px;top:4px;width:8px;height:8px;border-radius:50%;background:var(--red);border:1.5px solid var(--surface)}
+.thumb.hid{opacity:.45}
 .thumb.sel{outline:2px solid var(--blue);outline-offset:1px}
 .card{display:grid;gap:10px;border:1px solid var(--rule);border-radius:8px;padding:10px;background:var(--paper)}
 .card .pic{position:relative;border-radius:5px;overflow:hidden;background:var(--stage)}
@@ -349,6 +350,7 @@ body.focus .stage-btn{display:none}
           <div class="slider"><label for="s-ovop">Deckkraft Bild</label><output id="o-ovop"></output><input type="range" id="s-ovop" min="10" max="100" step="5"></div>
           <div class="row" id="active-actions">
             <button class="btn" type="button" id="btn-next">Nächstes ohne Winkel</button>
+            <button class="btn" type="button" id="btn-hide">Aussortieren</button>
             <button class="btn danger" type="button" id="btn-del">Löschen</button>
             <button class="btn" type="button" id="btn-close">Schließen</button>
           </div>
@@ -364,6 +366,7 @@ body.focus .stage-btn{display:none}
           <li>Bild über den Kopf legen, Kopf passend drehen (mit „Verschieben“ und Zoom ausrichten).</li>
           <li>„Aktuellen Winkel speichern“. Danach erscheint das Bild bei ähnlichen Drehungen als Beispiel, auch gespiegelt.</li>
         </ol>
+        <button class="btn" type="button" id="btn-show-hidden" hidden></button>
         <div class="thumbs small" id="lib"></div>
       </section>
     </aside>
@@ -940,7 +943,7 @@ const LocalStore = {
   tx(mode) { return this.db.transaction("refs", mode).objectStore("refs"); },
   async reload() {
     const all = await new Promise((res, rej) => { const q = this.tx("readonly").getAll(); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
-    refs = all.map(r => { if (!this.urls.has(r.id)) this.urls.set(r.id, URL.createObjectURL(r.blob)); return { id: r.id, name: r.name || "", analyse: r.analyse || null, yaw: r.yaw, pitch: r.pitch, roll: r.roll, createdAt: r.createdAt, src: this.urls.get(r.id) }; });
+    refs = all.map(r => { if (!this.urls.has(r.id)) this.urls.set(r.id, URL.createObjectURL(r.blob)); return { id: r.id, name: r.name || "", analyse: r.analyse || null, aussortiert: r.aussortiert || "", yaw: r.yaw, pitch: r.pitch, roll: r.roll, createdAt: r.createdAt, src: this.urls.get(r.id) }; });
     onRefs();
   },
   put(o) { return new Promise((res, rej) => { const q = this.tx("readwrite").put(o); q.onsuccess = res; q.onerror = () => rej(q.error); }); },
@@ -954,7 +957,7 @@ const CloudStore = {
   async init(assets, db) {
     this.assets = assets; this.coll = db.collection("refs");
     this.coll.onSnapshot(snap => {
-      refs = snap.docs.map(d => { const v = d.data() || {}; return { id: d.id, assetId: v.assetId, name: v.name || "", analyse: v.analyse || null, yaw: v.yaw ?? null, pitch: v.pitch ?? null, roll: v.roll ?? null, createdAt: v.createdAt || 0, src: "/_blob/" + v.assetId }; });
+      refs = snap.docs.map(d => { const v = d.data() || {}; return { id: d.id, assetId: v.assetId, name: v.name || "", analyse: v.analyse || null, aussortiert: v.aussortiert || "", yaw: v.yaw ?? null, pitch: v.pitch ?? null, roll: v.roll ?? null, createdAt: v.createdAt || 0, src: "/_blob/" + v.assetId }; });
       onRefs();
     }, err => setNote("#store-note", "Sammlung konnte nicht geladen werden (" + (err && err.code || "Fehler") + "). Seite neu laden.", true));
   },
@@ -1024,7 +1027,7 @@ const angDist = (a, b) => 2 * Math.acos(Math.min(1, Math.abs(a.dot(b)))) * 180 /
 function bestMatches() {
   const q = quat(S.yaw, S.pitch, S.roll), out = [];
   for (const r of refs) {
-    if (r.yaw == null) continue;
+    if (r.yaw == null || r.aussortiert) continue;
     const d1 = angDist(q, quat(r.yaw, r.pitch, r.roll)), d2 = angDist(q, quat(-r.yaw, r.pitch, -r.roll));
     out.push(d2 + .5 < d1 ? { r, d: d2, flip: true } : { r, d: d1, flip: false });
   }
@@ -1064,12 +1067,15 @@ function selectRef(id, flip) { activeId = id; overlayFlip = !!flip; overlayShow 
 function onRefs() {
   refs.sort((a, b) => a.createdAt - b.createdAt);
   if (activeId && !refs.find(r => r.id === activeId)) activeId = null;
-  const unsorted = refs.filter(r => r.yaw == null);
-  $("#lib-count").textContent = refs.length ? `${refs.length} Bilder · ${unsorted.length} ohne Winkel` : "";
+  const unsorted = refs.filter(r => r.yaw == null && !r.aussortiert), hiddenN = refs.filter(r => r.aussortiert).length;
+  $("#lib-count").textContent = refs.length ? `${refs.length - hiddenN} Bilder · ${unsorted.length} ohne Winkel` : "";
+  const hb = $("#btn-show-hidden"); hb.hidden = !hiddenN;
+  hb.textContent = showHidden ? `Aussortierte ausblenden` : `Aussortierte zeigen (${hiddenN})`;
   $("#lib-steps").hidden = refs.length > 3;
   const lib = $("#lib"); lib.replaceChildren();
   for (const r of refs) {
-    const b = document.createElement("button"); b.type = "button"; b.className = "thumb" + (r.id === activeId ? " sel" : "");
+    if (r.aussortiert && !showHidden) continue;
+    const b = document.createElement("button"); b.type = "button"; b.className = "thumb" + (r.id === activeId ? " sel" : "") + (r.aussortiert ? " hid" : "");
     b.setAttribute("aria-label", r.yaw == null ? "Bild ohne Winkel" : `Bild, Drehung ${fmt(r.yaw)}, Neigung ${fmt(r.pitch)}`);
     const im = document.createElement("img"); im.src = r.src; im.alt = ""; im.loading = "lazy"; b.append(im);
     if (r.yaw == null) { const d = document.createElement("span"); d.className = "dot"; b.append(d); }
@@ -1083,6 +1089,8 @@ function onRefs() {
     const im = $("#active-img"); if (im.getAttribute("src") !== a.src) im.src = a.src; im.classList.toggle("flip", overlayFlip);
     $("#active-meta").textContent = a.yaw == null ? "Noch kein Winkel gespeichert" : `Gespeichert: Drehung ${fmt(a.yaw)} · Neigung ${fmt(a.pitch)} · Kippung ${fmt(a.roll)}`;
     $("#btn-apply-angle").disabled = a.yaw == null;
+    $("#btn-hide").textContent = a.aussortiert ? "Zurückholen" : "Aussortieren";
+    if (a.aussortiert) $("#active-meta").textContent = "Aussortiert: " + a.aussortiert;
     renderAnalyse(a);
     $("#t-overlay").checked = overlayShow; $("#t-flip").checked = overlayFlip;
     $("#btn-next").disabled = !unsorted.some(r => r.id !== a.id);
@@ -1118,6 +1126,7 @@ let cropsKey = "";
 function renderCrops() {
   const types = FEAT_TYPES[S.feat] || FEAT_TYPES.auge, q = quat(S.yaw, S.pitch, S.roll), list = [];
   for (const r of refs) {
+    if (r.aussortiert) continue;
     const ms = ((r.analyse && r.analyse.merkmale) || []).filter(m => types.includes(m.typ) && Array.isArray(m.box) && m.box.length === 4);
     if (!ms.length) continue;
     const ang = refAngles(r); let d = 999, flip = false;
@@ -1182,8 +1191,16 @@ $("#t-overlay").addEventListener("change", e => { overlayShow = e.target.checked
 $("#t-flip").addEventListener("change", e => { overlayFlip = e.target.checked; onRefs(); });
 $("#btn-close").addEventListener("click", () => { activeId = null; onRefs(); });
 $("#btn-apply-angle").addEventListener("click", () => { const a = refs.find(r => r.id === activeId); if (a && a.yaw != null) overlayFlip ? setAngles(-a.yaw, a.pitch, -a.roll) : setAngles(a.yaw, a.pitch, a.roll); });
-function nextUnsorted() { const n = refs.find(r => r.yaw == null && r.id !== activeId); if (n) { activeId = n.id; overlayFlip = false; overlayShow = true; onRefs(); } }
+function nextUnsorted() { const n = refs.find(r => r.yaw == null && !r.aussortiert && r.id !== activeId); if (n) { activeId = n.id; overlayFlip = false; overlayShow = true; onRefs(); } }
 $("#btn-next").addEventListener("click", nextUnsorted);
+let showHidden = false;
+$("#btn-show-hidden").addEventListener("click", () => { showHidden = !showHidden; onRefs(); });
+$("#btn-hide").addEventListener("click", async () => {
+  const a = refs.find(r => r.id === activeId); if (!a || !store) return;
+  const v = a.aussortiert ? "" : "von Hand";
+  try { await store.setAngles(a.id, { aussortiert: v }); a.aussortiert = v; onRefs(); setNote("#upload-note", v ? "Bild aussortiert, es erscheint nicht mehr als Beispiel." : "Bild zurückgeholt."); }
+  catch (e) { setNote("#upload-note", "Ändern fehlgeschlagen (" + (e && e.code || "Fehler") + ").", true); }
+});
 $("#btn-save-angle").addEventListener("click", async () => {
   const a = refs.find(r => r.id === activeId); if (!a || !store) return;
   // Wird das Bild gespiegelt angezeigt, gilt der Kopfwinkel für das Spiegelbild.
