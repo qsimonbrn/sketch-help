@@ -105,6 +105,14 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-siz
 .card .pic{position:relative;border-radius:5px;overflow:hidden;background:var(--stage)}
 .card .pic img{display:block;width:100%;max-height:220px;object-fit:contain}
 .card .pic img.flip{transform:scaleX(-1)}
+.crops{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;align-items:start}
+.crop{position:relative;padding:0;border:1px solid var(--rule);border-radius:5px;background:var(--stage);cursor:pointer;overflow:hidden;display:block;width:100%}
+.crop .win{position:relative;overflow:hidden;width:100%;aspect-ratio:4/3}
+.crop .win.flip{transform:scaleX(-1)}
+.crop .win img{position:absolute;max-width:none;display:block}
+.crop .tag{position:absolute;left:3px;bottom:3px;font-family:var(--f-mono);font-size:10.5px;background:var(--surface);color:var(--ink);border-radius:3px;padding:1px 4px;font-variant-numeric:tabular-nums}
+.crop.sel{outline:2px solid var(--blue);outline-offset:1px}
+.crops.inline{grid-template-columns:repeat(4,minmax(0,1fr))}
 .analyse{font-size:13px;line-height:1.5;background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:8px 10px;display:grid;gap:6px}
 .analyse .tags{display:flex;flex-wrap:wrap;gap:4px}
 .analyse .tag2{font-family:var(--f-mono);font-size:11.5px;border:1px solid var(--rule);border-radius:999px;padding:1px 8px;background:var(--paper)}
@@ -301,6 +309,19 @@ body.focus .stage-btn{display:none}
       </section>
 
       <section class="sec">
+        <h2>Merkmale zu dieser Drehung <em id="feat-count"></em></h2>
+        <div class="seg" role="radiogroup" aria-label="Merkmal" style="flex-wrap:wrap">
+          <label><input type="radio" name="feat" value="auge"><span>Augen</span></label>
+          <label><input type="radio" name="feat" value="mund"><span>Mund</span></label>
+          <label><input type="radio" name="feat" value="nase"><span>Nase</span></label>
+          <label><input type="radio" name="feat" value="haare"><span>Haare</span></label>
+          <label><input type="radio" name="feat" value="gesicht"><span>Gesicht</span></label>
+        </div>
+        <div class="crops" id="crops"></div>
+        <p class="note" id="crops-empty" hidden></p>
+      </section>
+
+      <section class="sec">
         <h2>Bildsammlung <em id="lib-count"></em></h2>
         <div class="drop" id="drop">
           <input type="file" id="file-in" accept="image/*" multiple hidden>
@@ -385,7 +406,7 @@ const sstep = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); retu
 const fmt = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(Math.round(v)) + "°";
 
 /* ---------- Zustand ---------- */
-const DEF = { yaw: 30, pitch: 10, roll: 0, zoom: 1, panX: 0, panY: 0, persp: 30, lw: 1.2, style: 50, shadeMode: "soft", light: -45, eyeDist: 0, eyeSize: 0, eyeHeight: 0, fig: "side", figClip: true, eyeShape: "anime", iris: true,
+const DEF = { yaw: 30, pitch: 10, roll: 0, zoom: 1, panX: 0, panY: 0, persp: 30, lw: 1.2, style: 50, shadeMode: "soft", light: -45, eyeDist: 0, eyeSize: 0, eyeHeight: 0, fig: "side", figClip: true, eyeShape: "anime", iris: true, feat: "auge",
   show: { axis: true, face: true, feat: true, side: true, grid: false, hidden: true, fill: true, neck: true, pip: true, box: false, vp: false },
   ovop: 50 };
 let S = JSON.parse(JSON.stringify(DEF));
@@ -1009,6 +1030,7 @@ function renderMatches() {
   const near = all.filter(m => m.d <= 30).length;
   $("#btn-gallery").textContent = sorted ? `Beispiele zu dieser Drehung (${near})` : "Beispiele zu dieser Drehung";
   if (!$("#gallery").hidden) renderGallery();
+  renderCrops();
   for (const m of list) {
     const b = document.createElement("button"); b.type = "button"; b.className = "thumb" + (m.r.id === activeId ? " sel" : "");
     b.setAttribute("aria-label", `Beispiel, ${Math.round(m.d)}° Abweichung${m.flip ? ", gespiegelt" : ""}`);
@@ -1055,6 +1077,59 @@ function onRefs() {
   }
   updateOverlay(); renderMatches();
 }
+/* ---------- Merkmal-Ausschnitte ----------
+   Rahmen aus der Analyse sind auf 0..1000 normiert (bezogen auf das aufrecht gedrehte Bild).
+   Der Ausschnitt wird nur angezeigt (CSS), es entstehen keine Bildkopien. */
+const FEAT_TYPES = { auge: ["auge_links", "auge_rechts"], mund: ["mund"], nase: ["nase"], haare: ["haare"], gesicht: ["gesicht"] };
+const FEAT_PAD = { auge: .35, mund: .5, nase: .6, haare: .08, gesicht: .12 };
+function makeCrop(r, box, flip, pad, label) {
+  const [a, b, c, d] = box.map(v => clamp(v, 0, 1000) / 1000);
+  const w0 = Math.max(.005, c - a), h0 = Math.max(.005, d - b);
+  const x1 = clamp(a - w0 * pad, 0, 1), y1 = clamp(b - h0 * pad, 0, 1), x2 = clamp(c + w0 * pad, 0, 1), y2 = clamp(d + h0 * pad, 0, 1);
+  const w = x2 - x1, h = y2 - y1;
+  const btn = document.createElement("button"); btn.type = "button"; btn.className = "crop" + (r.id === activeId ? " sel" : "");
+  const win = document.createElement("div"); win.className = "win" + (flip ? " flip" : "");
+  const im = document.createElement("img"); im.alt = ""; im.loading = "lazy"; im.decoding = "async";
+  im.style.width = (100 / w) + "%"; im.style.height = (100 / h) + "%";
+  im.style.left = (-x1 / w * 100) + "%"; im.style.top = (-y1 / h * 100) + "%";
+  im.onload = () => { win.style.aspectRatio = String(clamp((w * im.naturalWidth) / (h * im.naturalHeight), .4, 3)); };
+  im.src = r.src; win.append(im); btn.append(win);
+  if (label) { const t = document.createElement("span"); t.className = "tag"; t.textContent = label; btn.append(t); }
+  return btn;
+}
+/* Winkel eines Bildes: gespeicherter Winkel zuerst, sonst der Vorschlag der Analyse */
+function refAngles(r) {
+  if (r.yaw != null) return [r.yaw, r.pitch, r.roll || 0];
+  const k = r.analyse && r.analyse.kopf; return k && k.yaw != null ? [k.yaw, k.pitch || 0, k.roll || 0] : null;
+}
+let cropsKey = "";
+function renderCrops() {
+  const types = FEAT_TYPES[S.feat] || FEAT_TYPES.auge, q = quat(S.yaw, S.pitch, S.roll), list = [];
+  for (const r of refs) {
+    const ms = ((r.analyse && r.analyse.merkmale) || []).filter(m => types.includes(m.typ) && Array.isArray(m.box) && m.box.length === 4);
+    if (!ms.length) continue;
+    const ang = refAngles(r); let d = 999, flip = false;
+    if (ang) { const d1 = angDist(q, quat(...ang)), d2 = angDist(q, quat(-ang[0], ang[1], -ang[2])); flip = d2 + .5 < d1; d = Math.min(d1, d2); }
+    // Bei Augen pro Bild nur ein Ausschnitt: das größere (meist nähere) Auge
+    const pick = S.feat === "auge" ? [ms.slice().sort((x, y) => (y.box[2] - y.box[0]) * (y.box[3] - y.box[1]) - (x.box[2] - x.box[0]) * (x.box[3] - x.box[1]))[0]] : ms;
+    for (const m of pick) list.push({ r, m, d, flip });
+  }
+  list.sort((x, y) => x.d - y.d);
+  const shown = list.slice(0, 24), key = S.feat + "|" + shown.map(x => x.r.id + (x.flip ? "f" : "") + Math.round(x.d / 5)).join(",") + "|" + activeId;
+  $("#feat-count").textContent = list.length ? `${list.length} Ausschnitte` : "";
+  const empty = $("#crops-empty"); empty.hidden = list.length > 0;
+  empty.textContent = refs.some(r => r.analyse) ? "Für dieses Merkmal hat die Analyse keine Rahmen gefunden." : "Noch keine analysierten Bilder in der Sammlung.";
+  if (key === cropsKey) return; cropsKey = key;
+  const box = $("#crops"); box.replaceChildren();
+  for (const x of shown) {
+    const el = makeCrop(x.r, x.m.box, x.flip, FEAT_PAD[S.feat] ?? .3, x.d < 999 ? Math.round(x.d) + "°" + (x.flip ? " ⇋" : "") : "");
+    el.setAttribute("aria-label", `${x.r.name || "Bild"}, ${x.d < 999 ? Math.round(x.d) + "° Abweichung" : "ohne Winkel"}`);
+    el.addEventListener("click", () => selectRef(x.r.id, x.flip));
+    box.append(el);
+  }
+}
+document.querySelectorAll("input[name=feat]").forEach(r => { r.checked = r.value === S.feat; r.addEventListener("change", () => { S.feat = r.value; persist(); renderCrops(); }); });
+
 /* Ergebnis der Bildanalyse (vom Pi/Ollama) anzeigen; der Winkel ist nur ein grober Vorschlag */
 function renderAnalyse(a) {
   const box = $("#active-analyse"), an = a.analyse;
@@ -1065,6 +1140,13 @@ function renderAnalyse(a) {
   const lab = { kopf: "Kopf", oberkoerper: "Oberkörper", ganzkoerper: "Ganzkörper", sonstiges: "Sonstiges", maennlich: "männlich", weiblich: "weiblich", unklar: "unklar", kurz: "Haare kurz", mittel: "Haare mittel", lang: "Haare lang" };
   for (const t of [an.art, an.geschlecht, an.haarlaenge, an.frisur].filter(Boolean)) { const e = document.createElement("span"); e.className = "tag2"; e.textContent = lab[t] || t; tags.append(e); }
   box.append(head, tags);
+  const ms = (an.merkmale || []).filter(m => Array.isArray(m.box) && m.box.length === 4);
+  if (ms.length) {
+    const g = document.createElement("div"); g.className = "crops inline";
+    const nm = { auge_links: "Auge l.", auge_rechts: "Auge r.", mund: "Mund", nase: "Nase", haare: "Haare", gesicht: "Gesicht", ohr: "Ohr", hand: "Hand", koerper: "Körper" };
+    for (const m of ms) { const typ = Object.keys(FEAT_TYPES).find(k2 => FEAT_TYPES[k2].includes(m.typ)); g.append(makeCrop(a, m.box, overlayFlip, FEAT_PAD[typ] ?? .2, nm[m.typ] || m.typ)); }
+    box.append(g);
+  }
   const k = an.kopf;
   if (k && k.yaw != null) {
     const row = document.createElement("div"); row.className = "row"; row.style.alignItems = "center";

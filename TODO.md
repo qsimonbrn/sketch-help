@@ -36,8 +36,11 @@ Testbilder in der App prüfen: Simon lädt die 61 Bilder aus `usb-share/sketch-h
 (die App speichert seit Version 7 den Dateinamen). Danach hängt Claude die Analyse aus `ergebnis2.jsonl`
 per Dateiname an die Einträge (Feld `analyse`), Simon prüft Schlagworte und Vorschlag in der App.
 
-- [ ] 61 Testbilder in der App hochladen (Simon)
-- [ ] Analyse importieren (Claude: `ergebnis2.jsonl` lesen, `refs` nach `name` abgleichen, `analyse` setzen)
+- [x] 61 Testbilder in der App hochgeladen (Simon)
+- [x] Analyse importiert (61 Einträge, Feld `analyse`; 2 ältere Einträge ohne Namen bleiben ohne Analyse)
+- [x] Merkmal-Ausschnitte in der App (Augen, Mund, Nase, Haare, Gesicht), sortiert nach Abweichung zur Drehung
+- [ ] Rahmen für Mund, Nase, Haare verbessern: zweistufige Analyse (erst Gesicht, dann Teile im Gesichtsausschnitt)
+- [ ] Import als Skript ins Repo (`tools/import_analyse.py`), statt von Hand
 
 Testläufe zeigen: `qwen3.5:9b` schätzt keine brauchbaren Winkel. Entscheidung: nur grobe Ansichten.
 
