@@ -105,6 +105,9 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-siz
 .card .pic{position:relative;border-radius:5px;overflow:hidden;background:var(--stage)}
 .card .pic img{display:block;width:100%;max-height:220px;object-fit:contain}
 .card .pic img.flip{transform:scaleX(-1)}
+.analyse{font-size:13px;line-height:1.5;background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:8px 10px;display:grid;gap:6px}
+.analyse .tags{display:flex;flex-wrap:wrap;gap:4px}
+.analyse .tag2{font-family:var(--f-mono);font-size:11.5px;border:1px solid var(--rule);border-radius:999px;padding:1px 8px;background:var(--paper)}
 .card .meta{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .drop{border:1.5px dashed var(--rule);border-radius:8px;padding:12px;display:grid;gap:8px;text-align:center}
 .drop.over{border-color:var(--blue);background:var(--blue-tint)}
@@ -310,6 +313,7 @@ body.focus .stage-btn{display:none}
         <div class="card" id="active" hidden>
           <div class="pic"><img id="active-img" alt="Ausgewähltes Bild"></div>
           <div class="meta" id="active-meta"></div>
+          <div class="analyse" id="active-analyse" hidden></div>
           <div class="row">
             <button class="btn primary" type="button" id="btn-save-angle">Aktuellen Winkel speichern</button>
             <button class="btn" type="button" id="btn-apply-angle">Kopf auf diesen Winkel</button>
@@ -903,12 +907,12 @@ const LocalStore = {
   tx(mode) { return this.db.transaction("refs", mode).objectStore("refs"); },
   async reload() {
     const all = await new Promise((res, rej) => { const q = this.tx("readonly").getAll(); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
-    refs = all.map(r => { if (!this.urls.has(r.id)) this.urls.set(r.id, URL.createObjectURL(r.blob)); return { id: r.id, yaw: r.yaw, pitch: r.pitch, roll: r.roll, createdAt: r.createdAt, src: this.urls.get(r.id) }; });
+    refs = all.map(r => { if (!this.urls.has(r.id)) this.urls.set(r.id, URL.createObjectURL(r.blob)); return { id: r.id, name: r.name || "", analyse: r.analyse || null, yaw: r.yaw, pitch: r.pitch, roll: r.roll, createdAt: r.createdAt, src: this.urls.get(r.id) }; });
     onRefs();
   },
   put(o) { return new Promise((res, rej) => { const q = this.tx("readwrite").put(o); q.onsuccess = res; q.onerror = () => rej(q.error); }); },
   get(id) { return new Promise((res, rej) => { const q = this.tx("readonly").get(id); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); },
-  async add(blob) { const id = "r" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); await this.put({ id, blob, yaw: null, pitch: null, roll: null, createdAt: Date.now() }); await this.reload(); return id; },
+  async add(blob, name) { const id = "r" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); await this.put({ id, blob, name: name || "", yaw: null, pitch: null, roll: null, createdAt: Date.now() }); await this.reload(); return id; },
   async setAngles(id, a) { const o = await this.get(id); Object.assign(o, a); await this.put(o); await this.reload(); },
   async remove(id) { await new Promise((res, rej) => { const q = this.tx("readwrite").delete(id); q.onsuccess = res; q.onerror = () => rej(q.error); }); const u = this.urls.get(id); if (u) URL.revokeObjectURL(u); this.urls.delete(id); await this.reload(); }
 };
@@ -917,13 +921,13 @@ const CloudStore = {
   async init(assets, db) {
     this.assets = assets; this.coll = db.collection("refs");
     this.coll.onSnapshot(snap => {
-      refs = snap.docs.map(d => { const v = d.data() || {}; return { id: d.id, assetId: v.assetId, yaw: v.yaw ?? null, pitch: v.pitch ?? null, roll: v.roll ?? null, createdAt: v.createdAt || 0, src: "/_blob/" + v.assetId }; });
+      refs = snap.docs.map(d => { const v = d.data() || {}; return { id: d.id, assetId: v.assetId, name: v.name || "", analyse: v.analyse || null, yaw: v.yaw ?? null, pitch: v.pitch ?? null, roll: v.roll ?? null, createdAt: v.createdAt || 0, src: "/_blob/" + v.assetId }; });
       onRefs();
     }, err => setNote("#store-note", "Sammlung konnte nicht geladen werden (" + (err && err.code || "Fehler") + "). Seite neu laden.", true));
   },
-  async add(blob) {
+  async add(blob, name) {
     const up = await this.assets.upload(blob, { type: "image/jpeg" });
-    const ref = this.coll.doc(); await ref.set({ assetId: up.id, yaw: null, pitch: null, roll: null, createdAt: Date.now() });
+    const ref = this.coll.doc(); await ref.set({ assetId: up.id, name: name || "", yaw: null, pitch: null, roll: null, createdAt: Date.now() });
     return ref.id;
   },
   async setAngles(id, a) { await this.coll.doc(id).update(a); },
@@ -962,7 +966,7 @@ async function addFiles(files) {
   let ok = 0, firstId = null, fail = 0;
   for (const f of files) {
     setNote("#upload-note", `Lade hoch … ${ok + fail + 1} von ${files.length}`);
-    try { const id = await store.add(await prepImage(f)); ok++; if (!firstId) firstId = id; }
+    try { const id = await store.add(await prepImage(f), f.name); ok++; if (!firstId) firstId = id; }
     catch (e) { fail++; if (e && e.code === "quota_or_state") { setNote("#upload-note", "Speicher des Artefakts ist voll. Lösche Bilder, die du nicht brauchst.", true); break; } }
   }
   uploading = false;
@@ -1045,10 +1049,30 @@ function onRefs() {
     const im = $("#active-img"); if (im.getAttribute("src") !== a.src) im.src = a.src; im.classList.toggle("flip", overlayFlip);
     $("#active-meta").textContent = a.yaw == null ? "Noch kein Winkel gespeichert" : `Gespeichert: Drehung ${fmt(a.yaw)} · Neigung ${fmt(a.pitch)} · Kippung ${fmt(a.roll)}`;
     $("#btn-apply-angle").disabled = a.yaw == null;
+    renderAnalyse(a);
     $("#t-overlay").checked = overlayShow; $("#t-flip").checked = overlayFlip;
     $("#btn-next").disabled = !unsorted.some(r => r.id !== a.id);
   }
   updateOverlay(); renderMatches();
+}
+/* Ergebnis der Bildanalyse (vom Pi/Ollama) anzeigen; der Winkel ist nur ein grober Vorschlag */
+function renderAnalyse(a) {
+  const box = $("#active-analyse"), an = a.analyse;
+  box.replaceChildren(); box.hidden = !an && !a.name;
+  if (!an) { if (a.name) { const n = document.createElement("div"); n.className = "note"; n.textContent = a.name + " · noch keine Analyse"; box.append(n); } return; }
+  const head = document.createElement("div"); head.className = "note"; head.textContent = (a.name ? a.name + " · " : "") + "Analyse " + (an.modell || "");
+  const tags = document.createElement("div"); tags.className = "tags";
+  const lab = { kopf: "Kopf", oberkoerper: "Oberkörper", ganzkoerper: "Ganzkörper", sonstiges: "Sonstiges", maennlich: "männlich", weiblich: "weiblich", unklar: "unklar", kurz: "Haare kurz", mittel: "Haare mittel", lang: "Haare lang" };
+  for (const t of [an.art, an.geschlecht, an.haarlaenge, an.frisur].filter(Boolean)) { const e = document.createElement("span"); e.className = "tag2"; e.textContent = lab[t] || t; tags.append(e); }
+  box.append(head, tags);
+  const k = an.kopf;
+  if (k && k.yaw != null) {
+    const row = document.createElement("div"); row.className = "row"; row.style.alignItems = "center";
+    const t = document.createElement("span"); t.className = "note"; t.textContent = `Vorschlag: ${describe(k.yaw, k.pitch, k.roll || 0)} (${fmt(k.yaw)} / ${fmt(k.pitch)})`;
+    const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = "Vorschlag übernehmen";
+    b.addEventListener("click", () => setAngles(k.yaw, k.pitch, k.roll || 0));
+    row.append(t, b); box.append(row);
+  }
 }
 function updateOverlay() {
   const a = refs.find(r => r.id === activeId);

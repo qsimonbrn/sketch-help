@@ -32,6 +32,13 @@ VRoid-Modelle sind VRM 0.x; `VRMUtils.rotateVRM0` ist schon eingebaut.
 
 ## 3. Eigene Bilder grob einsortieren
 
+Testbilder in der App prüfen: Simon lädt die 61 Bilder aus `usb-share/sketch-help/test` in der App hoch
+(die App speichert seit Version 7 den Dateinamen). Danach hängt Claude die Analyse aus `ergebnis2.jsonl`
+per Dateiname an die Einträge (Feld `analyse`), Simon prüft Schlagworte und Vorschlag in der App.
+
+- [ ] 61 Testbilder in der App hochladen (Simon)
+- [ ] Analyse importieren (Claude: `ergebnis2.jsonl` lesen, `refs` nach `name` abgleichen, `analyse` setzen)
+
 Testläufe zeigen: `qwen3.5:9b` schätzt keine brauchbaren Winkel. Entscheidung: nur grobe Ansichten.
 
 - [ ] Schema auf Kategorien umstellen: Drehung (frontal, ¾ links/rechts, Profil links/rechts, von hinten),
