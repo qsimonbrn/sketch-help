@@ -12,7 +12,7 @@ Stand: 26.10.2026. Entwurf, noch nicht umgesetzt.
 
 ## Ablauf
 
-1. Bilder landen per Samba in einem Ordner auf der USB-Platte, z. B. `/mnt/usb-hdd/kopfdreher/bilder/`.
+1. Bilder landen per Samba in einem Ordner auf der USB-Platte, als Unterordner der bestehenden Freigabe `usb-share`: `/mnt/usb-hdd/sketch-help/bilder/` (die Platte ist die Samsung 870 QVO SSD, der Pfadname ist historisch).
 2. Ein Dienst auf dem Pi bemerkt neue Dateien, legt Vorschaubilder an (Pillow) und trägt sie
    mit Status „neu“ in SQLite ein.
 3. Ein Worker auf dem Pi schickt neue Bilder an Ollama auf dem PC, sobald der PC erreichbar ist.
@@ -48,7 +48,7 @@ Stufe 2 nur, wenn Stufe 1 nicht reicht.
 
 ## Offene Punkte
 
-- Adresse des PCs und installierte Vision-Modelle (`/api/tags`) noch nicht geprüft.
+- PC: 192.168.178.134, Modell `qwen3.5:9b`. Am 26.10. nachts nicht erreichbar (ARP ohne Antwort), Bildfähigkeit des Modells noch nicht geprüft.
 - Ollama ist im Heimnetz ohne Anmeldung erreichbar. Unkritisch, solange der Port nicht
   nach außen freigegeben wird.
 - Umsetzung auf dem Pi gehört ins Raspi-Projekt (neuer Stack, Doku, `pi-guard.sh`).
