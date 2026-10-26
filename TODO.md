@@ -57,12 +57,14 @@ Bekannt: Pi 4B hat nur ca. 1 GB RAM frei. Dateien im Ordner gehören `simon`, sc
 
 - [ ] Rumpf mit Schultern und Schlüsselbein am Konstruktionskopf
 - [ ] Eigene Proportionen als Profil speichern (Kinnlänge, Kieferbreite; Augen-Regler gibt es schon)
+- [x] Augenformen: Oval, Anime, Rund, Mandel, Tsurime, Tareme, Schmal; Iris optional
+- [ ] Augenformen an echten Bildern prüfen und nachschärfen (Lidfalte, Wimpernlinie?)
 - [ ] Anime-Augen: Standard wurde nach einem Vergleichsbild nach außen verschoben (`eyeX` 0,46), mit weiteren Bildern prüfen
 
 ## Simon (offen)
 
 - [ ] PC in der Fritzbox auf 192.168.178.135 reservieren
-- [ ] `bericht2.html` in `usb-share/sketch-help/` ansehen: stimmen Geschlecht, Haarlänge, Rahmen?
+- [ ] `bericht2.html` ansehen (Finder: ⌘K → `smb://192.168.178.80/usb-share` → `sketch-help`): stimmen Geschlecht, Haarlänge, Rahmen?
 
 ## Aufräumen auf dem Pi
 
