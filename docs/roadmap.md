@@ -2,6 +2,8 @@
 
 ## Stufe 1: Zeichenhilfen ✔
 
+- [x] Stil rastet bei Anime ein, Augen anpassbar (Abstand, Größe, Höhe)
+
 - [x] Stil stufenlos realistisch ↔ Anime ↔ Chibi
 - [x] Galerie „Beispiele zu dieser Drehung“
 - [x] Übungsmodus mit Zufallswinkel und Zeitlimit
@@ -10,8 +12,11 @@
 
 ## Stufe 2: 3D-Anime-Figuren als Beispiele
 
-- [ ] Three.js auf aktuelle Version umstellen (ES-Module), Linien und Materialien portieren
-- [ ] VRoid-Figuren (CC0) laden, im selben Winkel wie den Konstruktionskopf zeigen, umschaltbar männlich/weiblich
+- [x] Three.js auf 0.185 umgestellt (ES-Module), Linien und Materialien portiert
+- [x] Beispielfigur von pixiv (VRM-Lizenz 1.0) im selben Winkel: daneben, darunter, allein; Halsschnitt
+- [x] Eigene VRM-Figur laden (nur bis zum Neuladen)
+- [ ] VRoid-CC0-Figuren einbinden (männlich/weiblich, Frisurproben), Auswahl in der App
+- [ ] Eigene Figuren dauerhaft speichern
 - [ ] Figur als eigene Ebene exportieren (PNG, transparent)
 
 ## Stufe 2b: Modell verfeinern

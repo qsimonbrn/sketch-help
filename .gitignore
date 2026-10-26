@@ -7,3 +7,6 @@ bilder/
 __pycache__/
 node_modules/
 .DS_Store
+
+# 3D-Figuren liegen im Artefakt-Speicher bzw. auf dem Pi, nicht im Repo
+*.vrm

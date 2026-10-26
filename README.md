@@ -13,12 +13,14 @@ gespiegelt.
 
 | Bereich | Stand |
 |---|---|
-| Kopfmodell | Stil stufenlos realistisch ↔ Anime ↔ Chibi, Hals, Nase, Augen, Ohren |
+| Kopfmodell | Stil stufenlos realistisch ↔ Anime ↔ Chibi (rastet bei Anime ein), Augen einstellbar |
 | Hilfslinien | Achsen, Gesichtslinien, Seitenkreis, Gitter, verdeckte Linien gestrichelt, Box mit Fluchtlinien |
 | Schattierung | aus, weich, Cel (zweistufig), Lichtrichtung einstellbar |
 | Export | PNG nur Linien oder mit Fläche, transparenter Hintergrund |
 | Beispiele | Upload, Winkel per Overlay zuordnen, Abgleich inkl. Spiegelung, Galerie |
 | Übung | Zufallswinkel, Zeitlimit, Auflösen |
+| Anime-Figur | 3D-Figur (VRM) im selben Winkel: daneben, darunter oder allein; eigene VRM ladbar |
+| Technik | Three.js 0.185 (ES-Module), `@pixiv/three-vrm` 3.5.5, per jsDelivr |
 | Laufzeit | Claude-Artefakt (Speicher: Artefakt-Assets und -Datenbank) |
 
 ## Aufbau
@@ -34,3 +36,17 @@ tools/box_report.py    Prüfbericht: erkannte Bildbereiche als Rahmen über den 
 `app/index.html` ist derzeit als Artefakt-Seite geschrieben: Der Rahmen (`<!doctype>`,
 `<head>`, `<body>`) wird vom Artefakt ergänzt. Für den Betrieb auf dem Pi bekommt die
 Datei einen eigenen Rahmen (siehe Roadmap, Stufe 3).
+
+## Figur und Lizenz
+
+Die eingebaute Figur ist `VRM1_Constraint_Twist_Sample.vrm` aus dem Repository
+[pixiv/three-vrm](https://github.com/pixiv/three-vrm), © pixiv Inc., VRM Public License 1.0
+(laut eingebetteten Metadaten: Weitergabe und Veränderung erlaubt, kein Namensvermerk nötig).
+Sie liegt nicht im Repo (`*.vrm` ist ausgeschlossen), sondern im Artefakt als Base64-Text
+(`figur/pixiv-sample.vrm.txt`), weil Artefakte keine `.vrm`-Dateien ausliefern.
+
+## Lokal testen
+
+Die Seite braucht einen HTTP-Server (ES-Module), z. B. `python3 -m http.server` im Ordner `app/`.
+Den Platzhalter `__VRM_URL__` in `app/index.html` beim Veröffentlichen durch den Pfad zur Figur ersetzen,
+`__VRM_B64__` durch `true` (Base64-Text) oder `false` (rohe .vrm).

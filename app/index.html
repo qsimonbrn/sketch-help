@@ -220,6 +220,21 @@ body.focus .stage-btn{display:none}
         <h2>Ansicht</h2>
         <div class="slider"><label for="s-style">Stil</label><output id="o-style"></output><input type="range" id="s-style" min="0" max="100" step="1" list="style-marks"><datalist id="style-marks"><option value="0"></option><option value="50"></option><option value="100"></option></datalist>
           <div class="styleticks" aria-hidden="true"><span>Realistisch</span><span>Anime</span><span>Chibi</span></div></div>
+        <div class="row" style="align-items:center;justify-content:space-between">
+          <span style="font-size:14px;font-weight:500">Anime-Figur</span>
+          <div class="seg" role="radiogroup" aria-label="Anime-Figur">
+            <label><input type="radio" name="fig" value="off"><span>Aus</span></label>
+            <label><input type="radio" name="fig" value="side"><span>Daneben</span></label>
+            <label><input type="radio" name="fig" value="over"><span>Darunter</span></label>
+            <label><input type="radio" name="fig" value="only"><span>Allein</span></label>
+          </div>
+        </div>
+        <div class="row" style="align-items:center">
+          <label class="chip"><input type="checkbox" id="t-figclip"><span>Nur Kopf und Hals</span></label>
+          <input type="file" id="vrm-in" accept=".vrm" hidden>
+          <button class="btn" type="button" id="btn-vrm">Eigene VRM-Figur laden</button>
+        </div>
+        <p class="note" id="fig-note">Figur wird geladen …</p>
         <details class="eyes" id="eyes-box">
           <summary>Augen anpassen <span class="note" id="eyes-sum"></span></summary>
           <div class="slider"><label for="s-eyedist">Abstand</label><output id="o-eyedist"></output><input type="range" id="s-eyedist" min="-50" max="50" step="1" list="zero-mark"></div>
@@ -330,13 +345,20 @@ body.focus .stage-btn{display:none}
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineSegmentsGeometry.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineGeometry.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineMaterial.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineSegments2.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/Line2.js"></script>
-<script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/",
+  "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.5.5/lib/three-vrm.module.min.js"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { Line2 } from "three/addons/lines/Line2.js";
+import { LineGeometry } from "three/addons/lines/LineGeometry.js";
+import { LineMaterial } from "three/addons/lines/LineMaterial.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { VRMLoaderPlugin, VRMUtils } from "@pixiv/three-vrm";
 (() => {
 const $ = s => document.querySelector(s);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -346,7 +368,7 @@ const sstep = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); retu
 const fmt = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(Math.round(v)) + "°";
 
 /* ---------- Zustand ---------- */
-const DEF = { yaw: 30, pitch: 10, roll: 0, zoom: 1, panX: 0, panY: 0, persp: 30, lw: 1.2, style: 50, shadeMode: "soft", light: -45, eyeDist: 0, eyeSize: 0, eyeHeight: 0,
+const DEF = { yaw: 30, pitch: 10, roll: 0, zoom: 1, panX: 0, panY: 0, persp: 30, lw: 1.2, style: 50, shadeMode: "soft", light: -45, eyeDist: 0, eyeSize: 0, eyeHeight: 0, fig: "side", figClip: true,
   show: { axis: true, face: true, feat: true, side: true, grid: false, hidden: true, fill: true, neck: true, pip: true, box: false, vp: false },
   ovop: 50 };
 let S = JSON.parse(JSON.stringify(DEF));
@@ -455,12 +477,12 @@ outlineMat.onBeforeCompile = sh => {
 const CATS = { axis: { col: "red", w: 2.6 }, face: { col: "blue", w: 2.0 }, feat: { col: "blue", w: 2.0 }, side: { col: "blue", w: 1.6 }, grid: { col: "blue-soft", w: 1.2 }, box: { col: "blue-soft", w: 1.8 } };
 const lineMats = [];
 for (const [k, c] of Object.entries(CATS)) {
-  c.vis = new THREE.LineMaterial({ color: new THREE.Color(COL[c.col]).getHex(), linewidth: c.w });
-  c.hid = new THREE.LineMaterial({ color: new THREE.Color(COL[c.col]).getHex(), linewidth: c.w * .75, transparent: true, opacity: .32, depthWrite: false, dashSize: .045, gapSize: .035, dashScale: 1 });
-  c.hid.defines.USE_DASH = ""; c.hid.depthFunc = THREE.GreaterDepth; c.hid.needsUpdate = true;
+  c.vis = new LineMaterial({ color: new THREE.Color(COL[c.col]).getHex(), linewidth: c.w });
+  c.hid = new LineMaterial({ color: new THREE.Color(COL[c.col]).getHex(), linewidth: c.w * .75, transparent: true, opacity: .32, depthWrite: false, dashSize: .045, gapSize: .035, dashScale: 1 });
+  c.hid.dashed = true; c.hid.depthFunc = THREE.GreaterDepth; c.hid.needsUpdate = true;
   lineMats.push(c.vis, c.hid);
 }
-const vpMat = new THREE.LineMaterial({ color: new THREE.Color(COL["blue-soft"]).getHex(), linewidth: 1, transparent: true, opacity: .55, depthTest: false, depthWrite: false });
+const vpMat = new LineMaterial({ color: new THREE.Color(COL["blue-soft"]).getHex(), linewidth: 1, transparent: true, opacity: .55, depthTest: false, depthWrite: false });
 lineMats.push(vpMat);
 function applyColors(src) {
   fillMat.color.set(src.fill); celMat.color.set(src.fill); outlineMat.color.set(src.blue); vpMat.color.set(src["blue-soft"]);
@@ -515,8 +537,8 @@ function buildHead() {
     for (const pts of segs) {
       const arr = []; for (const p of pts) arr.push(...offsetPt(p));
       for (const [gi, mat] of [[0, CATS[cat].vis], [1, CATS[cat].hid]]) {
-        const g = new THREE.LineGeometry(); g.setPositions(arr);
-        const l = new THREE.Line2(g, mat); l.computeLineDistances(); l.renderOrder = gi ? 3 : 2;
+        const g = new LineGeometry(); g.setPositions(arr);
+        const l = new Line2(g, mat); l.computeLineDistances(); l.renderOrder = gi ? 3 : 2;
         lines[cat][gi].add(l);
       }
     }
@@ -562,12 +584,13 @@ function buildHead() {
   for (const [a, b] of E) {
     const pa = new THREE.Vector3(...C[a]), pb = new THREE.Vector3(...C[b]), d = pb.clone().sub(pa).normalize();
     const p0 = pa.clone().addScaledVector(d, -14), p1 = pb.clone().addScaledVector(d, 14);
-    const g = new THREE.LineGeometry(); g.setPositions([p0.x, p0.y, p0.z, p1.x, p1.y, p1.z]);
-    const l = new THREE.Line2(g, vpMat); l.computeLineDistances(); l.renderOrder = 4; vp.add(l);
+    const g = new LineGeometry(); g.setPositions([p0.x, p0.y, p0.z, p1.x, p1.y, p1.z]);
+    const l = new Line2(g, vpMat); l.computeLineDistances(); l.renderOrder = 4; vp.add(l);
   }
   group.add(vp);
   for (const c of Object.keys(CATS)) group.add(lines[c][0], lines[c][1]);
   headParts = { group, lines, neck, vp };
+  if (typeof fitVRM === "function") fitVRM();
   head.add(group);
   applyVisibility();
 }
@@ -580,13 +603,15 @@ function applyVisibility() {
   headParts.neck.visible = S.show.neck;
   headParts.vp.visible = S.show.vp;
   headParts.group.visible = !practiceHidden;
-  fillMat.colorWrite = celMat.colorWrite = S.show.fill && !overlayOn();
+  fillMat.colorWrite = celMat.colorWrite = S.show.fill && !overlayOn() && S.fig !== "over";
   const mat = S.shadeMode === "cel" ? celMat : fillMat;
   for (const m of fillMeshes) m.material = mat;
   hemi.color.set(0xffffff);
-  if (S.shadeMode === "off") { hemi.groundColor.set(0xffffff); hemi.intensity = 1; dirL.intensity = 0; }
-  else if (S.shadeMode === "soft") { hemi.groundColor.set(0x8f9aa4); hemi.intensity = .72; dirL.intensity = .45; }
-  else { hemi.groundColor.set(0xffffff); hemi.intensity = .38; dirL.intensity = .75; }
+  // Three.js rechnet seit r155 physikalisch korrekt; Faktor PI hält die Helligkeit wie zuvor
+  const PI = Math.PI;
+  if (S.shadeMode === "off") { hemi.groundColor.set(0xffffff); hemi.intensity = PI; dirL.intensity = 0; }
+  else if (S.shadeMode === "soft") { hemi.groundColor.set(0x8f9aa4); hemi.intensity = .72 * PI; dirL.intensity = .45 * PI; }
+  else { hemi.groundColor.set(0xffffff); hemi.intensity = .38 * PI; dirL.intensity = .75 * PI; }
   const az = rad(S.light), el = rad(35);
   // Licht hängt an der Kamera; großer Abstand, damit die Richtung nicht von der Kameraposition überdeckt wird
   dirL.position.set(Math.sin(az) * Math.cos(el) * 60, Math.sin(el) * 60, Math.cos(az) * Math.cos(el) * 60);
@@ -594,10 +619,71 @@ function applyVisibility() {
   requestRender();
 }
 
+/* ---------- Anime-Figur (VRM) ---------- */
+// Beispielfigur von pixiv (VRM Public License 1.0: Weitergabe und Veränderung erlaubt, kein Namensvermerk nötig)
+const DEFAULT_VRM = { url: "__VRM_URL__", base64: __VRM_B64__, name: "VRM1 Constraint Twist Sample · © pixiv Inc. · VRM-Lizenz 1.0" };
+const figScene = new THREE.Scene();
+const figAmb = new THREE.AmbientLight(0xffffff, .55 * Math.PI); figScene.add(figAmb);
+const figDir = new THREE.DirectionalLight(0xffffff, .9 * Math.PI); figScene.add(figDir);
+const figRoot = new THREE.Group(); figScene.add(figRoot);
+const figPivot = new THREE.Group(); figPivot.rotation.order = "YXZ"; figRoot.add(figPivot);
+const clipPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+renderer.localClippingEnabled = true;
+let vrm = null, vrmLoading = false;
+const gltfLoader = new GLTFLoader(); gltfLoader.register(parser => new VRMLoaderPlugin(parser));
+const bonePos = (v, name) => { const n = v.humanoid.getRawBoneNode(name); return n ? n.getWorldPosition(new THREE.Vector3()) : null; };
+/* Figur so skalieren und verschieben, dass ihre Augen auf der Augenlinie des Konstruktionskopfs liegen
+   und die Drehachse (Kugelmitte) mit der des Kopfs zusammenfällt */
+function fitVRM() {
+  if (!vrm) return;
+  // Vermessen ohne die Drehung des Kopfs: Figur kurz aus der Gruppe lösen
+  const sc = vrm.scene, parent = sc.parent; if (parent) parent.remove(sc);
+  sc.scale.setScalar(1); sc.position.set(0, 0, 0); sc.updateMatrixWorld(true);
+  const head = bonePos(vrm, "head"), eL = bonePos(vrm, "leftEye"), eR = bonePos(vrm, "rightEye");
+  if (!head) { if (parent) parent.add(sc); return; }
+  const eye = eL && eR ? eL.clone().add(eR).multiplyScalar(.5) : head.clone().add(new THREE.Vector3(0, .07, .04));
+  const neckY = -.78, k = (P.eyeY - neckY) / Math.max(.01, eye.y - head.y);
+  sc.scale.setScalar(k);
+  sc.position.set(-eye.x * k, P.eyeY - eye.y * k, P.sz * .62 - eye.z * k);
+  if (parent) parent.add(sc);
+}
+function poseVRM(v) {
+  const h = v.humanoid, set = (b, z) => { const n = h.getNormalizedBoneNode(b); if (n) n.rotation.z = z; };
+  set("leftUpperArm", -1.2); set("rightUpperArm", 1.2);   // Arme locker nach unten statt T-Pose
+  v.update(0);
+}
+async function loadVRM(src) {
+  if (vrmLoading) return; vrmLoading = true;
+  setNote("#fig-note", "Figur wird geladen …");
+  try {
+    let gltf;
+    if (src.base64) {  // Artefakte liefern keine .vrm aus, daher als Base64-Text abgelegt
+      const r = await fetch(src.url); if (!r.ok) throw new Error("HTTP " + r.status);
+      const bin = atob((await r.text()).trim()), buf = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+      gltf = await gltfLoader.parseAsync(buf.buffer, "");
+    } else gltf = await gltfLoader.loadAsync(src.url);
+    const v = gltf.userData.vrm; if (!v) throw new Error("Keine VRM-Datei");
+    VRMUtils.removeUnnecessaryVertices(gltf.scene);
+    if (VRMUtils.combineSkeletons) VRMUtils.combineSkeletons(gltf.scene);
+    VRMUtils.rotateVRM0(v);
+    v.scene.traverse(o => {
+      o.frustumCulled = false;
+      if (o.material) for (const m of [].concat(o.material)) { m.clippingPlanes = [clipPlane]; m.clipping = true; m.needsUpdate = true; }
+    });
+    if (vrm) { figPivot.remove(vrm.scene); VRMUtils.deepDispose(vrm.scene); }
+    vrm = v; poseVRM(v); figPivot.add(v.scene); fitVRM();
+    const meta = v.meta || {};
+    setNote("#fig-note", src.name || ("Figur: " + (meta.name || meta.title || "ohne Namen")));
+  } catch (e) {
+    setNote("#fig-note", "Figur konnte nicht geladen werden: " + (e && e.message || e), true);
+  } finally { vrmLoading = false; requestRender(); }
+}
+
 /* ---------- Kamera & Rendern ---------- */
 let W = 1, H = 1, unitsPerPx = .01;
-function updateCamera() {
-  const fov = lerp(6, 62, S.persp / 100), aspect = W / H;
+function updateCamera(aspectOverride) {
+  const fov = lerp(6, 62, S.persp / 100), aspect = aspectOverride || W / H;
   const visH = Math.max(3.3, 2.6 / aspect);
   const d = visH / (2 * Math.tan(rad(fov) / 2)) / S.zoom;
   camera.fov = fov; camera.aspect = aspect; camera.near = Math.max(.01, d - 4); camera.far = d + 6;
@@ -615,12 +701,31 @@ let pending = false;
 function requestRender() { if (!pending) { pending = true; requestAnimationFrame(draw); } }
 function draw() {
   pending = false;
-  updateCamera();
-  root.position.set(S.panX, S.panY, 0);
-  head.rotation.set(rad(S.pitch), rad(S.yaw), rad(S.roll));
+  const fm = vrm ? S.fig : "off", side = fm === "side";
+  updateCamera(side ? (W / 2) / H : 0);
+  root.position.set(S.panX, S.panY, 0); figRoot.position.copy(root.position);
+  head.rotation.set(rad(S.pitch), rad(S.yaw), rad(S.roll)); figPivot.rotation.copy(head.rotation);
   outlineU.value = S.lw * 2.2 * unitsPerPx;
   for (const c of Object.values(CATS)) { c.vis.linewidth = c.w * S.lw; c.hid.linewidth = c.w * S.lw * .75; }
-  renderer.render(scene, camera);
+  // Schnittebene unterhalb des Halses, dreht mit dem Kopf
+  if (vrm) {
+    root.updateMatrixWorld(true); figPivot.updateMatrixWorld(true);
+    const n = new THREE.Vector3(0, 1, 0).applyQuaternion(figPivot.quaternion), p0 = new THREE.Vector3(0, -P.L - .3, 0).applyMatrix4(figPivot.matrixWorld);
+    if (S.figClip) clipPlane.setFromNormalAndCoplanarPoint(n, p0); else clipPlane.set(new THREE.Vector3(0, 1, 0), 1e6);
+    figDir.position.copy(dirL.getWorldPosition(new THREE.Vector3()));
+  }
+  renderer.setScissorTest(false); renderer.setViewport(0, 0, W, H); renderer.clear();
+  if (fm === "off") renderer.render(scene, camera);
+  else if (fm === "only") renderer.render(figScene, camera);
+  else if (fm === "over") { renderer.autoClear = false; renderer.render(figScene, camera); renderer.clearDepth(); renderer.render(scene, camera); renderer.autoClear = true; }
+  else {
+    for (const m of lineMats) m.resolution.set(W / 2, H);
+    renderer.autoClear = false; renderer.setScissorTest(true);
+    renderer.setViewport(0, 0, W / 2, H); renderer.setScissor(0, 0, W / 2, H); renderer.render(scene, camera);
+    renderer.setViewport(W / 2, 0, W / 2, H); renderer.setScissor(W / 2, 0, W / 2, H); renderer.render(figScene, camera);
+    renderer.setScissorTest(false); renderer.setViewport(0, 0, W, H); renderer.autoClear = true;
+    for (const m of lineMats) m.resolution.set(W, H);
+  }
 }
 new ResizeObserver(resize).observe(stage);
 
@@ -671,6 +776,11 @@ for (const [k, id] of Object.entries(eyeSl)) $("#s-" + id).addEventListener("inp
 });
 $("#btn-eyes-reset").addEventListener("click", () => { S.eyeDist = S.eyeSize = S.eyeHeight = 0; syncUI(); persist(); rebuildSoon(); });
 sl.light[0].addEventListener("input", e => { S.light = +e.target.value; syncUI(); applyVisibility(); persist(); });
+document.querySelectorAll("input[name=fig]").forEach(r => { r.checked = r.value === S.fig; r.addEventListener("change", () => { S.fig = r.value; applyVisibility(); persist(); }); });
+$("#t-figclip").checked = S.figClip;
+$("#t-figclip").addEventListener("change", e => { S.figClip = e.target.checked; requestRender(); persist(); });
+$("#btn-vrm").addEventListener("click", () => $("#vrm-in").click());
+$("#vrm-in").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) loadVRM({ url: URL.createObjectURL(f), name: "Eigene Figur: " + f.name + " (nur bis zum Neuladen)" }); });
 document.querySelectorAll("input[name=shade]").forEach(r => { r.checked = r.value === S.shadeMode; r.addEventListener("change", () => { S.shadeMode = r.value; applyVisibility(); persist(); }); });
 document.querySelectorAll("input[name=mode]").forEach(r => r.addEventListener("change", () => { mode = r.value; stage.classList.toggle("mode-move", mode === "move"); }));
 $("#btn-reset-view").addEventListener("click", () => { S.zoom = 1; S.panX = 0; S.panY = 0; requestRender(); persist(); });
@@ -1006,6 +1116,7 @@ $("#pr-show-ex").addEventListener("change", updatePracticeExample);
 
 /* ---------- Start ---------- */
 syncUI(); buildHead(); resize(); renderMatches();
+loadVRM(DEFAULT_VRM);
 initStore();
 })();
 </script>
