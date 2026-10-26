@@ -2,6 +2,12 @@
 
 Versionsnummern entsprechen den Veröffentlichungen des Artefakts.
 
+## v0.13 (26.10.2026)
+
+- **3D-Figur im Profil richtig ausgerichtet** (Simons Kommentar „die Seitenansicht passt nicht“): Die Tiefe
+  richtete sich nach den Augen-Knochen, die in der Augapfelmitte sitzen; die Figur lag dadurch gut ein Drittel
+  Kopfbreite zu weit vorn. Jetzt wird an der Nasenspitze ausgerichtet. Betraf alle Figuren, auch die pixiv-Figur
+
 ## v0.12 (26.10.2026)
 
 - **Figurenauswahl:** pixiv-Beispiel, VRoid weiblich, VRoid männlich (HairSample_Female/_Male, laut offizieller

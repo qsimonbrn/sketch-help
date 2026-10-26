@@ -768,6 +768,23 @@ const gltfLoader = new GLTFLoader(); gltfLoader.register(parser => new VRMLoader
 const bonePos = (v, name) => { const n = v.humanoid.getRawBoneNode(name); return n ? n.getWorldPosition(new THREE.Vector3()) : null; };
 /* Figur so skalieren und verschieben, dass ihre Augen auf der Augenlinie des Konstruktionskopfs liegen
    und die Drehachse (Kugelmitte) mit der des Kopfs zusammenfällt */
+/* Vorderster Punkt des Gesichts in der Mitte zwischen Augenhöhe und Kopfgelenk (Nasenspitze), in Weltkoordinaten
+   der unskalierten Figur. Rohpunkte ohne Skinning: Der Kopf steht in Ruhehaltung, und die Knochenmatrizen
+   entstehen erst beim Zeichnen. Haar-Teile zählen nicht, sonst würde ein Pony vor den Augen als Nase gelten. */
+function noseTip(sc, eye, headH) {
+  const v = new THREE.Vector3(); let best = null;
+  const y0 = eye.y - headH, y1 = eye.y, xw = headH * .25;
+  sc.traverse(o => {
+    if (!o.isMesh || !o.geometry || !o.geometry.attributes.position || /hair/i.test(o.name)) return;
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i); o.localToWorld(v);
+      if (v.y < y0 || v.y > y1 || Math.abs(v.x - eye.x) > xw) continue;
+      if (best == null || v.z > best) best = v.z;
+    }
+  });
+  return best;
+}
 function fitVRM() {
   if (!vrm) return;
   // Vermessen ohne die Drehung des Kopfs: Figur kurz aus der Gruppe lösen
@@ -776,9 +793,13 @@ function fitVRM() {
   const head = bonePos(vrm, "head"), eL = bonePos(vrm, "leftEye"), eR = bonePos(vrm, "rightEye");
   if (!head) { if (parent) parent.add(sc); return; }
   const eye = eL && eR ? eL.clone().add(eR).multiplyScalar(.5) : head.clone().add(new THREE.Vector3(0, .07, .04));
+  // Tiefe an der Nasenspitze ausrichten: Die Augen-Knochen sitzen in der Augapfelmitte, tief im Kopf.
+  // Mit ihnen lag die Figur zu weit vorn (im Profil sichtbar). Gemessen wird vor dem Skalieren.
+  const nose = noseTip(sc, eye, eye.y - head.y);
   const neckY = -.78, k = (P.eyeY - neckY) / Math.max(.01, eye.y - head.y);
   sc.scale.setScalar(k);
-  sc.position.set(-eye.x * k, P.eyeY - eye.y * k, P.sz * .62 - eye.z * k);
+  const kTip = surfY(0, P.noseY), tipZ = kTip ? kTip[2] + P.noseLen : P.sz;
+  sc.position.set(-eye.x * k, P.eyeY - eye.y * k, nose != null ? tipZ - nose * k : P.sz * .62 - eye.z * k);
   if (parent) parent.add(sc);
 }
 const MIMIK = ["happy", "angry", "sad", "relaxed", "surprised", "blink"];
