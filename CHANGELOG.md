@@ -7,6 +7,8 @@ Versionsnummern entsprechen den Veröffentlichungen des Artefakts.
 - **Analyse Version 4** (`tools/analyse.py`): grobe Ansichten statt Winkeln, Drehung (frontal, ¾ links/rechts,
   Profil links/rechts, hinten) und Neigung (oben, Augenhöhe, unten). `kopf` nur noch aus der Kategorie
   abgeleitet, damit v0.11 weiter sortiert. Option `--spiegeln` für den Gegenlauf
+- **Analyse Version 5:** Drehrichtung aus den Rahmen (Nasenlage, Augengrößen) statt aus dem Modellwort,
+  das in Testlauf 3 fast nur „rechts“ kannte; `--nachberechnen` ohne neuen Modelllauf
 - `tools/vergleich.py` (Stabilität), `tools/import_analyse.py` (Import per Dateiname statt von Hand)
 
 ## v0.11 (26.10.2026)

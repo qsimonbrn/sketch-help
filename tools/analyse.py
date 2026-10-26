@@ -9,6 +9,9 @@ Stufe 2  Gesichtsausschnitt (mit Haaren, vergrößert): Ansicht noch einmal und 
          Mund, Nase, Haare, Ohren. Rahmen werden auf das ganze Bild zurückgerechnet.
 
 Ansicht: Stufe 2 gilt, wenn sie gelaufen ist, sonst Stufe 1 (z. B. Figur von hinten).
+Die Seite (links/rechts) kommt aus den Rahmen (Nasenlage, Augengrößen), nicht aus dem Modellwort;
+das Modellwort bleibt in ansicht.modell. Siehe richtung() und Testlauf 3 in docs/architektur.md.
+    python3 analyse.py --nachberechnen ergebnis3.jsonl --out ergebnis3_rahmen.jsonl   # ohne Modell
 Beide Urteile stehen im Ergebnis (ansicht_ganz, ansicht_kopf), damit man sie vergleichen kann.
 Das Feld kopf (yaw/pitch/roll) wird nur aus der Ansicht abgeleitet, damit ältere App-Versionen
 weiter sortieren können. Es ist keine Winkelschätzung.
@@ -28,7 +31,8 @@ import argparse, base64, io, json, pathlib, sys, time, urllib.error, urllib.requ
 
 from PIL import Image, ImageOps, ImageStat
 
-VERSION = 4
+VERSION = 5
+SCHWELLE_FRONTAL = .15  # |Wert| darunter gilt als frontal (an Testlauf 3 per Kontaktbogen geprüft)
 EXT = {".png", ".jpg", ".jpeg", ".webp"}
 BOX = {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4}
 
@@ -138,6 +142,52 @@ def ansicht(s):
     return {"drehung": d if d in DREHUNG else None, "neigung": n if n in NEIGUNG else None}
 
 
+def merkmal(e, typ):
+    return next((m["box"] for m in e.get("merkmale") or [] if m.get("typ") == typ), None)
+
+
+def richtung(e):
+    """Drehung aus den Rahmen statt aus dem Modellwort (Testlauf 3: das Wort kennt fast nur „rechts“).
+
+    wert = Nasenversatz − 0,5 × Augenunterschied, beides relativ zur Gesichtsbreite.
+    Nasenversatz: Nase (sonst Mund) rechts der Gesichtsmitte = positiv. Augenunterschied: rechtes Auge
+    breiter als linkes = positiv. Gesicht zur rechten Bildseite gedreht → Nase rechts, rechtes Auge kleiner.
+    Gibt (drehung, wert) zurück; None, wenn die Rahmen nichts hergeben.
+    """
+    modell = (e.get("ansicht") or {}).get("drehung")
+    g = merkmal(e, "gesicht")
+    if not g or modell in (None, "hinten"):
+        return modell, None
+    breite = g[2] - g[0]
+    n = merkmal(e, "nase") or merkmal(e, "mund")
+    nase = ((n[0] + n[2]) / 2 - (g[0] + g[2]) / 2) / breite if n else None
+    l, r = merkmal(e, "auge_links"), merkmal(e, "auge_rechts")
+    augen = ((r[2] - r[0]) - (l[2] - l[0])) / max(r[2] - r[0], l[2] - l[0]) if l and r else None
+    if modell.startswith("profil"):
+        if nase is None or abs(nase) < .05:
+            return modell, nase
+        return ("profil_rechts" if nase > 0 else "profil_links"), round(nase, 2)
+    if nase is None and augen is None:
+        return modell, None
+    wert = (nase or 0) - .5 * (augen or 0)
+    if abs(wert) < SCHWELLE_FRONTAL:
+        return "frontal", round(wert, 2)
+    return ("dreiviertel_rechts" if wert > 0 else "dreiviertel_links"), round(wert, 2)
+
+
+def nachberechnen(e):
+    """Ansicht und abgeleitetes kopf-Feld aus den Rahmen neu setzen; das Modellwort bleibt in ansicht.modell."""
+    if not e.get("ansicht"):
+        return e
+    modell = e["ansicht"].get("modell", e["ansicht"].get("drehung"))
+    e["ansicht"]["drehung"] = modell
+    d, wert = richtung(e)
+    e["ansicht"].update(drehung=d, modell=modell, wert=wert, quelle_drehung="rahmen" if wert is not None else "modell")
+    if d:
+        e["kopf"] = {"yaw": YAW[d], "pitch": PITCH.get(e["ansicht"].get("neigung"), 0), "roll": 0, "quelle": "kategorie"}
+    return e
+
+
 def analyse(path, a):
     with Image.open(path) as raw:
         im = ImageOps.exif_transpose(raw).convert("RGB")
@@ -180,15 +230,13 @@ def analyse(path, a):
                                                          round(cx1 + b[2] * sx), round(cy1 + b[3] * sy)]})
             res["kopf_ausschnitt"] = [round(cx1), round(cy1), round(cx2), round(cy2)]
     res["merkmale"] = merkmale
-    d, n = res["ansicht"]["drehung"], res["ansicht"]["neigung"]
-    if d:  # Ableitung für ältere App-Versionen, keine Messung
-        res["kopf"] = {"yaw": YAW[d], "pitch": PITCH.get(n, 0), "roll": 0, "quelle": "kategorie"}
-    return res
+    return nachberechnen(res)  # Drehrichtung aus den Rahmen, kopf als Ableitung für ältere App-Versionen
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dir", required=True)
+    ap.add_argument("--dir")
+    ap.add_argument("--nachberechnen", metavar="JSONL", help="Kein Modelllauf: Drehung in einem vorhandenen Ergebnis aus den Rahmen neu berechnen, nach --out schreiben")
     ap.add_argument("--out", default="ergebnis.jsonl")
     ap.add_argument("--ollama", default="http://192.168.178.135:11434")
     ap.add_argument("--model", default="qwen3.5:9b")
@@ -198,6 +246,21 @@ def main():
     ap.add_argument("--min-std", type=float, default=10.0, help="Unter dieser Helligkeitsstreuung gilt ein Bild als einfarbig")
     ap.add_argument("--spiegeln", action="store_true", help="Bilder waagerecht spiegeln (Gegenprobe für die Stabilität)")
     a = ap.parse_args()
+
+    if a.nachberechnen:
+        zeilen = []
+        for z in pathlib.Path(a.nachberechnen).read_text(encoding="utf-8").splitlines():
+            if not z.strip(): continue
+            r = json.loads(z)
+            if r.get("ergebnis"):
+                r["ergebnis"] = nachberechnen(r["ergebnis"])
+                r["version"] = VERSION
+            zeilen.append(json.dumps(r, ensure_ascii=False))
+        pathlib.Path(a.out).write_text("\n".join(zeilen) + "\n", encoding="utf-8")
+        print(f"{len(zeilen)} Zeilen nachberechnet nach {a.out}", file=sys.stderr)
+        return
+    if not a.dir:
+        ap.error("--dir fehlt")
 
     out = pathlib.Path(a.out); done = set()
     if out.exists():

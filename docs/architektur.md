@@ -114,3 +114,17 @@ Folgerung: Die Drehrichtung aus der Geometrie ableiten (Nasen- bzw. Mundlage rel
 Augengrößen, ein Auge = Profil); das Modellwort nur für frontal/gedreht/Profil/hinten nutzen. Das lässt sich
 aus den vorhandenen Ergebnissen berechnen, ohne neuen Lauf. Schwellen noch nicht gegen Sichtprüfung geprüft.
 Nicht importiert, solange die Seite falsch ist.
+
+**Umgesetzt (Version 5):** `richtung()` in `tools/analyse.py`, Wert = Nasenversatz − 0,5 × Augenunterschied,
+unter 0,15 frontal. Profil und hinten vom Modell, beim Profil die Seite aus der Nase. Per
+`--nachberechnen` auf Lauf 3 angewendet (`ergebnis3_rahmen.jsonl`), kein neuer Modelllauf.
+
+| Messung | Modellwort | Rahmen |
+|---|---|---|
+| Verteilung (normal) | ¾ rechts 8, ¾ links 0 | ¾ rechts 5, ¾ links 7 |
+| Seite widerspricht sich zwischen normal und gespiegelt | 9 Bilder | **0 Bilder** |
+| Abweichung frontal ↔ leicht gedreht | 1 | 9 (Werte nahe der Schwelle) |
+
+Sichtprüfung am Kontaktbogen (Claude): klare Fälle stimmen (0437, 0441 rechts; 0444, 0489 links; 0463, 0485
+rechts statt frontal). Grenzfälle um ±0,15 sind Ermessenssache. 0480 ist eine Augen-Nahaufnahme und
+müsste unbrauchbar sein; 0454 (Profil) hat einen falschen Nasenrahmen, die Seite kommt dort vom Modellwort.
