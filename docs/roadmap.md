@@ -1,0 +1,30 @@
+# Roadmap
+
+## Stufe 1: Zeichenhilfen ✔
+
+- [x] Stil stufenlos realistisch ↔ Anime ↔ Chibi
+- [x] Galerie „Beispiele zu dieser Drehung“
+- [x] Übungsmodus mit Zufallswinkel und Zeitlimit
+- [x] Kopf in der Box mit Fluchtlinien
+- [x] Lichtrichtung, Cel-Schatten
+
+## Stufe 2: Modell verfeinern
+
+- [ ] Rumpf mit Schultern und Schlüsselbein, damit Kopfdrehung und Halsansatz zusammen sichtbar werden
+- [ ] Eigene Proportionen als Figur-Profil speichern (Augenhöhe, Kinnlänge, Kieferbreite, Augengröße)
+
+## Stufe 3: Pi und Bildanalyse
+
+Siehe [architektur.md](architektur.md).
+
+- [ ] Test: 20 bis 50 Bilder mit dem Vision-Modell auf dem PC auswerten, Winkel gegen Handwerte messen
+- [ ] Stack auf dem Pi: Ordner, SQLite, Vorschaubilder, Warteschlange, API (im Raspi-Projekt)
+- [ ] App mit eigenem HTML-Rahmen vom Pi ausliefern, Speicheradapter für die Pi-API
+- [ ] Merkmal-Beispiele: Augen, Münder, Nasen, Haare als Ausschnitte, kombinierbar mit dem Kopfwinkel
+- [ ] Filter: Geschlecht, Haarlänge, Frisur
+- [ ] Optional: Kopfwinkel über Gesichtspunkte und `solvePnP`
+
+## Stufe 4: Körper
+
+- [ ] Körperbilder in der Sammlung, verschlagwortet (stehend, sitzend, Hände, Perspektive)
+- [ ] Keine eigene 3D-Gliederpuppe: dafür gibt es ausgereifte Apps (z. B. Magic Poser)
