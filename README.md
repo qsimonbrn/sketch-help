@@ -28,6 +28,7 @@ app/index.html     Die App in einer Datei (Three.js r128 per CDN)
 docs/roadmap.md    Geplante Ausbaustufen
 docs/architektur.md  Zielbild mit Raspberry Pi und Bildanalyse auf dem PC
 tools/analyse_test.py  Testlauf: Bilder per Ollama verschlagworten (nur Standardbibliothek)
+tools/box_report.py    Prüfbericht: erkannte Bildbereiche als Rahmen über den Bildern
 ```
 
 `app/index.html` ist derzeit als Artefakt-Seite geschrieben: Der Rahmen (`<!doctype>`,

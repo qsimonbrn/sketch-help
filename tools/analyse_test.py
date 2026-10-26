@@ -81,7 +81,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", required=True)
     ap.add_argument("--out", default="ergebnis.jsonl")
-    ap.add_argument("--ollama", default="http://192.168.178.134:11434")
+    ap.add_argument("--ollama", default="http://192.168.178.135:11434")
     ap.add_argument("--model", default="qwen3.5:9b")
     ap.add_argument("--timeout", type=int, default=600)
     ap.add_argument("--limit", type=int, default=0)

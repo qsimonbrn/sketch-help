@@ -48,7 +48,7 @@ Stufe 2 nur, wenn Stufe 1 nicht reicht.
 
 ## Offene Punkte
 
-- PC: 192.168.178.134, Modell `qwen3.5:9b`. Am 26.10. nachts nicht erreichbar (ARP ohne Antwort), Bildfähigkeit des Modells noch nicht geprüft.
+- PC: Ollama 0.40.11 auf 192.168.178.135 (per DHCP, Adresse wechselt; im Router reservieren). Modell `qwen3.5:9b` (9,7B, Q4_K_M) hat die Fähigkeit „vision“, geprüft über `/api/show`.
 - Ollama ist im Heimnetz ohne Anmeldung erreichbar. Unkritisch, solange der Port nicht
   nach außen freigegeben wird.
 - Umsetzung auf dem Pi gehört ins Raspi-Projekt (neuer Stack, Doku, `pi-guard.sh`).
