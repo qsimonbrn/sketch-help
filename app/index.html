@@ -1,0 +1,795 @@
+<title>Kopfdreher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: Arbeitsfläche links (Leuchttisch), Werkzeugleiste rechts; schmal: gestapelt.
+   Farben nach Animationsstiften: Blau für Konstruktion, Rot für Schlüssellinien. */
+:root{
+  --paper:#EDF1F4; --surface:#F9FBFC; --stage:#E2E8ED; --grid:#D3DCE3;
+  --ink:#1B252E; --muted:#5A6A77; --rule:#CCD6DE;
+  --blue:#2B7BBE; --blue-soft:#93BFE0; --blue-tint:#E1EEF8;
+  --red:#CF3F37; --red-tint:#F8E3E1; --fill:#FFFFFF;
+  --f-display:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#11171C; --surface:#182027; --stage:#0D1318; --grid:#1B252D;
+  --ink:#E2E9EE; --muted:#90A1AE; --rule:#2A3640;
+  --blue:#69B3EA; --blue-soft:#3B6A8C; --blue-tint:#17293A;
+  --red:#F06A60; --red-tint:#3A1F1E; --fill:#222C34; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#11171C; --surface:#182027; --stage:#0D1318; --grid:#1B252D;
+  --ink:#E2E9EE; --muted:#90A1AE; --rule:#2A3640;
+  --blue:#69B3EA; --blue-soft:#3B6A8C; --blue-tint:#17293A;
+  --red:#F06A60; --red-tint:#3A1F1E; --fill:#222C34; color-scheme:dark}
+
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
+.app{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr)}
+.bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-block:10px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  border-bottom:1px solid var(--rule);background:var(--surface)}
+.brand{font-family:var(--f-display);font-weight:700;font-size:20px;letter-spacing:.01em;display:flex;align-items:baseline;gap:10px}
+.brand small{font-family:var(--f-mono);font-weight:400;font-size:11px;color:var(--muted);letter-spacing:0}
+.bar .spacer{flex:1}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 352px;min-height:0}
+
+/* Bühne */
+.stage{position:relative;min-height:0;overflow:hidden;touch-action:none;background-color:var(--stage);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:48px 48px;background-position:center center;cursor:grab}
+.stage.dragging{cursor:grabbing}
+.stage.mode-move{cursor:move}
+#overlay{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;opacity:.5;max-width:none}
+#overlay.flip{transform:scaleX(-1)}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block}
+.readout{position:absolute;left:calc(12px + env(safe-area-inset-left,0px));bottom:12px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}
+.readout span{font-family:var(--f-mono);font-size:12px;background:var(--surface);border:1px solid var(--rule);border-radius:4px;padding:3px 7px;font-variant-numeric:tabular-nums}
+.readout b{font-weight:500;color:var(--muted);margin-right:6px;font-family:var(--f-display);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.hint{position:absolute;left:50%;top:12px;transform:translateX(-50%);max-width:calc(100% - 32px);font-size:13px;background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:6px 10px;pointer-events:none;text-align:center}
+.pip{position:absolute;right:calc(12px + env(safe-area-inset-right,0px));top:12px;width:min(34%,230px);margin:0;background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:6px;cursor:pointer}
+.pip img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:3px;background:var(--stage)}
+.pip img.flip{transform:scaleX(-1)}
+.pip figcaption{font-family:var(--f-mono);font-size:11px;color:var(--muted);padding-top:5px;display:flex;justify-content:space-between;gap:6px}
+.focus-exit{position:absolute;right:calc(12px + env(safe-area-inset-right,0px));bottom:12px;opacity:0;transition:opacity .25s}
+.focus-exit.show{opacity:1}
+
+/* Panel */
+.panel{overflow:auto;background:var(--surface);border-left:1px solid var(--rule);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:6px 32px}
+.sec{display:grid;gap:10px;padding-block:16px;border-bottom:1px solid var(--rule)}
+.sec:last-child{border-bottom:0}
+.sec h2{margin:0;font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.sec h2 em{font-style:normal;font-family:var(--f-mono);letter-spacing:0;text-transform:none;font-weight:400;font-size:11px}
+.slider{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;align-items:center}
+.slider label{font-size:14px;font-weight:500}
+.slider output{justify-self:end;font-family:var(--f-mono);font-size:13px;font-variant-numeric:tabular-nums;color:var(--muted)}
+.slider input{grid-column:1/-1;width:100%;margin:0;accent-color:var(--blue)}
+.slider.red input{accent-color:var(--red)}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.btn{font:inherit;font-size:13px;font-weight:500;color:var(--ink);background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:6px 10px;cursor:pointer;min-height:34px;line-height:1.15}
+.btn:hover{border-color:var(--muted)}
+.btn:focus-visible,.chip input:focus-visible+span,.seg input:focus-visible+span{outline:2px solid var(--blue);outline-offset:2px}
+.btn.primary{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.btn.danger{color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,var(--rule))}
+.btn.wide{width:100%}
+.btn[disabled]{opacity:.45;cursor:default}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+.seg label{position:relative}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{display:block;padding:6px 12px;font-size:13px;font-weight:500;cursor:pointer;min-height:34px;box-sizing:border-box;line-height:22px}
+.seg label+label span{border-left:1px solid var(--rule)}
+.seg input:checked+span{background:var(--ink);color:var(--surface)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{position:relative}
+.chip input{position:absolute;opacity:0;pointer-events:none}
+.chip span{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--rule);border-radius:999px;padding:5px 11px 5px 9px;font-size:13px;cursor:pointer;color:var(--muted)}
+.chip span::before{content:"";width:9px;height:9px;border-radius:50%;border:1.5px solid currentColor;box-sizing:border-box}
+.chip input:checked+span{color:var(--ink);border-color:var(--muted)}
+.chip input:checked+span::before{background:var(--dot,var(--ink));border-color:var(--dot,var(--ink))}
+.chip.c-red{--dot:var(--red)} .chip.c-blue{--dot:var(--blue)} .chip.c-soft{--dot:var(--blue-soft)}
+.note{font-size:13px;color:var(--muted);margin:0}
+.note.err{color:var(--red)}
+.thumbs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.thumbs.small{grid-template-columns:repeat(4,minmax(0,1fr))}
+.thumb{position:relative;padding:0;border:1px solid var(--rule);border-radius:5px;overflow:hidden;background:var(--stage);cursor:pointer;aspect-ratio:1}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb img.flip{transform:scaleX(-1)}
+.thumb .tag{position:absolute;left:3px;bottom:3px;font-family:var(--f-mono);font-size:10.5px;background:var(--surface);color:var(--ink);border-radius:3px;padding:1px 4px;font-variant-numeric:tabular-nums}
+.thumb .dot{position:absolute;right:4px;top:4px;width:8px;height:8px;border-radius:50%;background:var(--red);border:1.5px solid var(--surface)}
+.thumb.sel{outline:2px solid var(--blue);outline-offset:1px}
+.card{display:grid;gap:10px;border:1px solid var(--rule);border-radius:8px;padding:10px;background:var(--paper)}
+.card .pic{position:relative;border-radius:5px;overflow:hidden;background:var(--stage)}
+.card .pic img{display:block;width:100%;max-height:220px;object-fit:contain}
+.card .pic img.flip{transform:scaleX(-1)}
+.card .meta{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.drop{border:1.5px dashed var(--rule);border-radius:8px;padding:12px;display:grid;gap:8px;text-align:center}
+.drop.over{border-color:var(--blue);background:var(--blue-tint)}
+.steps{margin:0;padding-left:20px;font-size:13px;color:var(--muted);display:grid;gap:4px}
+.confirm{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px}
+
+body.focus .bar,body.focus .panel,body.focus .readout,body.focus .hint{display:none}
+body.focus .app{grid-template-rows:minmax(0,1fr)}
+body.focus .main{grid-template-columns:minmax(0,1fr)}
+
+@media (max-width:820px){
+  .app{height:auto;display:block}
+  .main{display:block}
+  .stage{height:60svh;min-height:340px}
+  .panel{border-left:0;border-top:1px solid var(--rule);overflow:visible}
+  body.focus .stage{height:100svh}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+  <header class="bar">
+    <div class="brand">Kopfdreher <small>Konstruktionskopf · Loomis-Methode</small></div>
+    <div class="spacer"></div>
+    <div class="seg" role="radiogroup" aria-label="Ziehen auf der Fläche">
+      <label><input type="radio" name="mode" id="mode-rotate" value="rotate" checked><span>Drehen</span></label>
+      <label><input type="radio" name="mode" id="mode-move" value="move"><span>Verschieben</span></label>
+    </div>
+    <button class="btn" id="btn-reset-view" type="button">Ansicht zurücksetzen</button>
+    <button class="btn primary" id="btn-focus" type="button">Fokus</button>
+  </header>
+
+  <div class="main">
+    <div class="stage" id="stage">
+      <img id="overlay" alt="" hidden>
+      <canvas id="gl" aria-label="Drehbarer Konstruktionskopf"></canvas>
+      <div class="hint" id="hint" hidden></div>
+      <figure class="pip" id="pip" hidden>
+        <img id="pip-img" alt="Passendes Beispielbild">
+        <figcaption><span>Bestes Beispiel</span><span id="pip-dev"></span></figcaption>
+      </figure>
+      <div class="readout" aria-live="off">
+        <span><b>Drehung</b><output id="ro-yaw"></output></span>
+        <span><b>Neigung</b><output id="ro-pitch"></output></span>
+        <span><b>Kippung</b><output id="ro-roll"></output></span>
+      </div>
+      <button class="btn focus-exit" id="btn-focus-exit" type="button">Fokus beenden</button>
+    </div>
+
+    <aside class="panel">
+      <section class="sec">
+        <h2>Drehung <em>ziehen · Pfeiltasten</em></h2>
+        <div class="slider"><label for="s-yaw">Drehung links/rechts</label><output id="o-yaw"></output><input type="range" id="s-yaw" min="-180" max="180" step="1"></div>
+        <div class="slider"><label for="s-pitch">Neigung hoch/runter</label><output id="o-pitch"></output><input type="range" id="s-pitch" min="-80" max="80" step="1"></div>
+        <div class="slider"><label for="s-roll">Kippung zur Schulter</label><output id="o-roll"></output><input type="range" id="s-roll" min="-45" max="45" step="1"></div>
+        <div class="grid4" id="presets">
+          <button class="btn" type="button" data-p="-90,0,0">Profil links</button>
+          <button class="btn" type="button" data-p="-40,0,0">¾ links</button>
+          <button class="btn" type="button" data-p="0,0,0">Frontal</button>
+          <button class="btn" type="button" data-p="40,0,0">¾ rechts</button>
+          <button class="btn" type="button" data-p="90,0,0">Profil rechts</button>
+          <button class="btn" type="button" data-p="30,30,0">Von oben</button>
+          <button class="btn" type="button" data-p="30,-30,0">Von unten</button>
+          <button class="btn" type="button" id="btn-random">Zufall</button>
+        </div>
+      </section>
+
+      <section class="sec">
+        <h2>Ansicht</h2>
+        <div class="row" style="align-items:center;justify-content:space-between">
+          <span style="font-size:14px;font-weight:500">Proportionen</span>
+          <div class="seg" role="radiogroup" aria-label="Proportionen">
+            <label><input type="radio" name="preset" id="pr-anime" value="anime" checked><span>Anime</span></label>
+            <label><input type="radio" name="preset" id="pr-loomis" value="loomis"><span>Loomis</span></label>
+          </div>
+        </div>
+        <div class="slider"><label for="s-persp">Perspektive</label><output id="o-persp"></output><input type="range" id="s-persp" min="0" max="100" step="1"></div>
+        <div class="slider"><label for="s-lw">Linienstärke</label><output id="o-lw"></output><input type="range" id="s-lw" min="0.5" max="3" step="0.1"></div>
+        <div class="chips" id="toggles">
+          <label class="chip c-red"><input type="checkbox" id="t-axis"><span>Mittel- &amp; Augenlinie</span></label>
+          <label class="chip c-blue"><input type="checkbox" id="t-face"><span>Gesichtslinien</span></label>
+          <label class="chip c-blue"><input type="checkbox" id="t-feat"><span>Augen, Nase, Ohren</span></label>
+          <label class="chip c-blue"><input type="checkbox" id="t-side"><span>Seitenkreis</span></label>
+          <label class="chip c-soft"><input type="checkbox" id="t-grid"><span>Gitter</span></label>
+          <label class="chip"><input type="checkbox" id="t-hidden"><span>Verdeckte Linien</span></label>
+          <label class="chip"><input type="checkbox" id="t-fill"><span>Fläche</span></label>
+          <label class="chip"><input type="checkbox" id="t-shade"><span>Schattierung</span></label>
+          <label class="chip"><input type="checkbox" id="t-neck"><span>Hals</span></label>
+          <label class="chip"><input type="checkbox" id="t-pip"><span>Bestes Beispiel einblenden</span></label>
+        </div>
+      </section>
+
+      <section class="sec">
+        <h2>Für Procreate sichern</h2>
+        <div class="row" id="export-row">
+          <button class="btn primary" type="button" id="btn-png-lines">PNG nur Linien</button>
+          <button class="btn" type="button" id="btn-png-fill">PNG mit Fläche</button>
+        </div>
+        <p class="note" id="export-note">Transparenter Hintergrund, direkt als Ebene einfügbar. Alternativ: Fokus einschalten und Bildschirmfoto machen.</p>
+      </section>
+
+      <section class="sec">
+        <h2>Beispiele zu dieser Drehung <em id="match-count"></em></h2>
+        <div class="thumbs" id="matches"></div>
+        <p class="note" id="matches-empty">Noch keine eingeordneten Bilder. Lade unten Anime-Screenshots hoch und speichere zu jedem den Winkel.</p>
+      </section>
+
+      <section class="sec">
+        <h2>Bildsammlung <em id="lib-count"></em></h2>
+        <div class="drop" id="drop">
+          <input type="file" id="file-in" accept="image/*" multiple hidden>
+          <button class="btn primary wide" type="button" id="btn-add">Bilder hinzufügen</button>
+          <p class="note">oder hierher ziehen bzw. mit ⌘V einfügen</p>
+        </div>
+        <p class="note" id="store-note">Speicher wird verbunden …</p>
+        <p class="note" id="upload-note" hidden></p>
+
+        <div class="card" id="active" hidden>
+          <div class="pic"><img id="active-img" alt="Ausgewähltes Bild"></div>
+          <div class="meta" id="active-meta"></div>
+          <div class="row">
+            <button class="btn primary" type="button" id="btn-save-angle">Aktuellen Winkel speichern</button>
+            <button class="btn" type="button" id="btn-apply-angle">Kopf auf diesen Winkel</button>
+          </div>
+          <div class="chips">
+            <label class="chip"><input type="checkbox" id="t-overlay"><span>Über dem Kopf zeigen</span></label>
+            <label class="chip"><input type="checkbox" id="t-flip"><span>Gespiegelt</span></label>
+          </div>
+          <div class="slider"><label for="s-ovop">Deckkraft Bild</label><output id="o-ovop"></output><input type="range" id="s-ovop" min="10" max="100" step="5"></div>
+          <div class="row" id="active-actions">
+            <button class="btn" type="button" id="btn-next">Nächstes ohne Winkel</button>
+            <button class="btn danger" type="button" id="btn-del">Löschen</button>
+            <button class="btn" type="button" id="btn-close">Schließen</button>
+          </div>
+          <div class="confirm" id="del-confirm" hidden>
+            <span>Bild endgültig löschen?</span>
+            <button class="btn danger" type="button" id="btn-del-yes">Löschen</button>
+            <button class="btn" type="button" id="btn-del-no">Abbrechen</button>
+          </div>
+        </div>
+
+        <ol class="steps" id="lib-steps">
+          <li>Screenshots hochladen, sie landen als „ohne Winkel“ in der Sammlung.</li>
+          <li>Bild über den Kopf legen, Kopf passend drehen (mit „Verschieben“ und Zoom ausrichten).</li>
+          <li>„Aktuellen Winkel speichern“. Danach erscheint das Bild bei ähnlichen Drehungen als Beispiel, auch gespiegelt.</li>
+        </ol>
+        <div class="thumbs small" id="lib"></div>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineSegmentsGeometry.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineGeometry.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineMaterial.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineSegments2.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/Line2.js"></script>
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const rad = d => d * Math.PI / 180;
+const sstep = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+const fmt = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(Math.round(v)) + "°";
+
+/* ---------- Zustand ---------- */
+const DEF = { yaw: 30, pitch: 10, roll: 0, zoom: 1, panX: 0, panY: 0, persp: 30, lw: 1.2, preset: "anime",
+  show: { axis: true, face: true, feat: true, side: true, grid: false, hidden: true, fill: true, shade: true, neck: true, pip: true },
+  ovop: 50 };
+let S = JSON.parse(JSON.stringify(DEF));
+try { const raw = localStorage.getItem("kopfdreher.v1"); if (raw) { const o = JSON.parse(raw); S = { ...S, ...o, show: { ...S.show, ...(o.show || {}) } }; } } catch (e) {}
+let saveT; const persist = () => { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem("kopfdreher.v1", JSON.stringify(S)); } catch (e) {} }, 300); };
+let mode = "rotate";
+
+/* ---------- Proportionen ---------- */
+const PRESETS = {
+  anime:  { sx: .86, sz: .96, L: 1.30, zc: .58, chinW: .06, wj: .66, yj: .88, zj: -.02, earBaseY: -.86, backY: -.78, backZ: -.62,
+            bulgeFront: .03, browY: -.05, eyeY: -.34, eyeX: .40, eyeDx: .19, eyeDy: .13, noseY: -.78, noseLen: .06,
+            mouthY: -1.02, mouthW: .16, hairY: .42, neckR: .27 },
+  loomis: { sx: .90, sz: 1.0, L: 1.62, zc: .84, chinW: .20, wj: .74, yj: 1.12, zj: .02, earBaseY: -.95, backY: -.82, backZ: -.66,
+            bulgeFront: .05, browY: 0, eyeY: -.20, eyeX: .36, eyeDx: .15, eyeDy: .055, noseY: -.81, noseLen: .14,
+            mouthY: -1.12, mouthW: .22, hairY: .78, neckR: .40 }
+};
+let P = PRESETS[S.preset] || PRESETS.anime;
+
+/* Unterer Kontur-Ring (Kinn, Kiefer, Schädelbasis) als geschlossene Catmull-Rom-Kurve über den Winkel phi */
+let KEYS = [];
+function buildKeys() {
+  const pos = [[.3, [P.chinW, -P.L + .04, P.zc - .06]], [1.35, [P.wj, -P.yj, P.zj]], [2.1, [P.sx * .6, P.earBaseY, -.42]]];
+  const K = [{ a: -Math.PI, p: [0, P.backY, P.backZ] }];
+  for (let i = pos.length - 1; i >= 0; i--) { const [a, p] = pos[i]; K.push({ a: -a, p: [-p[0], p[1], p[2]] }); }
+  K.push({ a: 0, p: [0, -P.L, P.zc] });
+  for (const [a, p] of pos) K.push({ a, p });
+  KEYS = K;
+}
+function cr(p0, p1, p2, p3, t) {
+  const t2 = t * t, t3 = t2 * t;
+  return [0, 1, 2].map(k => .5 * (2 * p1[k] + (-p0[k] + p2[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t3));
+}
+function Bc(phi) {
+  let p = phi; while (p < -Math.PI) p += 2 * Math.PI; while (p >= Math.PI) p -= 2 * Math.PI;
+  const n = KEYS.length, A = k => k < n ? KEYS[k].a : KEYS[k - n].a + 2 * Math.PI;
+  let i = n - 1; for (let k = 0; k < n; k++) if (p >= A(k) && p < A(k + 1)) { i = k; break; }
+  const u = (p - A(i)) / (A(i + 1) - A(i)), g = j => KEYS[((j % n) + n) % n].p;
+  return cr(g(i - 1), g(i), g(i + 1), g(i + 2), u);
+}
+const upper = (phi, a) => [P.sx * Math.cos(a) * Math.sin(phi), Math.sin(a), P.sz * Math.cos(a) * Math.cos(phi)];
+function lower(phi, t) {
+  const b = Bc(phi), ex = P.sx * Math.sin(phi), ez = P.sz * Math.cos(phi);
+  // g startet mit senkrechter Tangente, damit der Übergang am Äquator der Kugel glatt bleibt
+  const g = 1 - Math.cos(Math.PI * t / 2);
+  const sn = Math.sin(Math.PI * t), k = (P.bulgeFront + (.08 - P.bulgeFront) * sstep(.2, -.9, Math.cos(phi))) * sn * sn;
+  return [lerp(ex, b[0], g) + Math.sin(phi) * k, b[1] * t, lerp(ez, b[2], g) + Math.cos(phi) * k];
+}
+/* Punkt auf der Kopfoberfläche über Winkel phi und Höhe Y (horizontaler Schnitt) */
+function surfY(phi, Y) {
+  if (Y >= 0) return upper(phi, Math.asin(Math.min(1, Y)));
+  const t = Y / Bc(phi)[1];
+  return t > 1.0001 ? null : lower(phi, Math.min(1, t));
+}
+
+/* ---------- Three.js ---------- */
+const stage = $("#stage"), canvas = $("#gl");
+let renderer;
+try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }); }
+catch (e) { $("#hint").hidden = false; $("#hint").textContent = "WebGL ist in diesem Browser nicht verfügbar."; return; }
+renderer.setClearColor(0x000000, 0);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, 1, .01, 100);
+scene.add(camera);
+const hemi = new THREE.HemisphereLight(0xffffff, 0xffffff, 1); scene.add(hemi);
+const dirL = new THREE.DirectionalLight(0xffffff, 0); dirL.position.set(-1.2, 1.4, 1); camera.add(dirL);
+const root = new THREE.Group(); scene.add(root);
+const head = new THREE.Group(); head.rotation.order = "YXZ"; root.add(head);
+
+const COL = {};
+function readColors() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ["blue", "blue-soft", "red", "fill", "stage"]) COL[k] = cs.getPropertyValue("--" + k).trim() || "#888";
+}
+readColors();
+
+const fillMat = new THREE.MeshLambertMaterial({ color: COL.fill, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1.5, polygonOffsetUnits: 3 });
+const outlineU = { value: .01 };
+const outlineMat = new THREE.MeshBasicMaterial({ color: COL.blue, side: THREE.BackSide });
+outlineMat.onBeforeCompile = sh => {
+  sh.uniforms.uOutline = outlineU;
+  sh.vertexShader = "uniform float uOutline;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\ntransformed += normal * uOutline;");
+};
+
+const CATS = { axis: { col: "red", w: 2.6 }, face: { col: "blue", w: 2.0 }, feat: { col: "blue", w: 2.0 }, side: { col: "blue", w: 1.6 }, grid: { col: "blue-soft", w: 1.2 } };
+const lineMats = [];
+for (const [k, c] of Object.entries(CATS)) {
+  c.vis = new THREE.LineMaterial({ color: new THREE.Color(COL[c.col]).getHex(), linewidth: c.w });
+  c.hid = new THREE.LineMaterial({ color: new THREE.Color(COL[c.col]).getHex(), linewidth: c.w * .75, transparent: true, opacity: .32, depthWrite: false, dashSize: .045, gapSize: .035, dashScale: 1 });
+  c.hid.defines.USE_DASH = ""; c.hid.depthFunc = THREE.GreaterDepth; c.hid.needsUpdate = true;
+  lineMats.push(c.vis, c.hid);
+}
+function applyColors(src) {
+  fillMat.color.set(src.fill); outlineMat.color.set(src.blue);
+  for (const c of Object.values(CATS)) { c.vis.color.set(src[c.col]); c.hid.color.set(src[c.col]); }
+}
+applyColors(COL);
+
+let headParts = null; // { group, lines: {cat: [vis, hid]} }
+function offsetPt(p) {
+  const cy = clamp(p[1], -.7, 0) * .6, d = [p[0], p[1] - cy, p[2]], l = Math.hypot(d[0], d[1], d[2]) || 1, e = .007;
+  return [p[0] + d[0] / l * e, p[1] + d[1] / l * e, p[2] + d[2] / l * e];
+}
+function sample(fn, n) {
+  const segs = []; let cur = [];
+  for (let i = 0; i <= n; i++) { const p = fn(i / n); if (!p) { if (cur.length > 1) segs.push(cur); cur = []; } else cur.push(p); }
+  if (cur.length > 1) segs.push(cur);
+  return segs;
+}
+function headGeometry() {
+  const N = 128, Mu = 28, Ml = 44, pos = [];
+  for (let j = 0; j <= Mu; j++) { const a = Math.PI / 2 * (1 - j / Mu); for (let i = 0; i < N; i++) pos.push(...upper(-Math.PI + 2 * Math.PI * i / N, a)); }
+  for (let j = 1; j <= Ml; j++) { const t = j / Ml; for (let i = 0; i < N; i++) pos.push(...lower(-Math.PI + 2 * Math.PI * i / N, t)); }
+  const rows = Mu + Ml + 1, last = (rows - 1) * N, ci = rows * N;
+  let cx = 0, cy = 0, cz = 0; for (let i = 0; i < N; i++) { cy += pos[(last + i) * 3 + 1]; cz += pos[(last + i) * 3 + 2]; }
+  pos.push(cx, cy / N - .05, cz / N);
+  const idx = [];
+  for (let r = 0; r < rows - 1; r++) for (let i = 0; i < N; i++) {
+    const a = r * N + i, b = (r + 1) * N + i, c = r * N + (i + 1) % N, d = (r + 1) * N + (i + 1) % N;
+    idx.push(a, b, c, c, b, d);
+  }
+  for (let i = 0; i < N; i++) idx.push(last + i, ci, last + (i + 1) % N);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
+function buildHead() {
+  if (headParts) { head.remove(headParts.group); headParts.group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+  buildKeys();
+  const group = new THREE.Group();
+  const hg = headGeometry();
+  group.add(new THREE.Mesh(hg, fillMat), new THREE.Mesh(hg, outlineMat));
+
+  const neckLen = 1.35, ng = new THREE.CylinderGeometry(P.neckR, P.neckR * 1.08, neckLen, 48, 1, false);
+  const neck = new THREE.Group(); neck.add(new THREE.Mesh(ng, fillMat), new THREE.Mesh(ng, outlineMat));
+  const k = .25, top = new THREE.Vector3(0, -.42, -.24), dir = new THREE.Vector3(0, -1, -k).normalize();
+  neck.position.copy(top.clone().addScaledVector(dir, neckLen / 2)); neck.rotation.x = Math.atan(k);
+  group.add(neck);
+
+  const lines = {}; for (const c of Object.keys(CATS)) lines[c] = [new THREE.Group(), new THREE.Group()];
+  const add = (cat, segs) => {
+    for (const pts of segs) {
+      const arr = []; for (const p of pts) arr.push(...offsetPt(p));
+      for (const [gi, mat] of [[0, CATS[cat].vis], [1, CATS[cat].hid]]) {
+        const g = new THREE.LineGeometry(); g.setPositions(arr);
+        const l = new THREE.Line2(g, mat); l.computeLineDistances(); l.renderOrder = gi ? 3 : 2;
+        lines[cat][gi].add(l);
+      }
+    }
+  };
+  const PI = Math.PI;
+  // Mittellinie vorn und hinten, Augenlinie
+  add("axis", sample(s => surfY(0, lerp(1, -P.L, s)), 90));
+  add("axis", sample(s => surfY(PI, lerp(1, Bc(PI)[1], s)), 60));
+  add("axis", sample(s => surfY(lerp(-1.25, 1.25, s), P.eyeY), 80));
+  // Gesichtslinien
+  add("face", sample(s => surfY(lerp(-PI, PI, s), P.browY), 160));
+  add("face", sample(s => surfY(lerp(-1.0, 1.0, s), P.noseY), 70));
+  add("face", sample(s => surfY(lerp(-P.mouthW, P.mouthW, s), P.mouthY), 20));
+  add("face", sample(s => surfY(lerp(-1.5, 1.5, s), P.hairY), 90));
+  add("face", sample(s => { const b = Bc(lerp(-2.0, 2.0, s)); return [b[0], b[1], b[2]]; }, 120));
+  // Augen, Ohren, Nase
+  for (const sg of [-1, 1]) {
+    add("feat", sample(s => { const t = s * 2 * PI; return surfY(sg * P.eyeX + P.eyeDx * Math.cos(t), P.eyeY + P.eyeDy * Math.sin(t)); }, 64));
+    const ec = PI / 2 - .03, mid = (P.browY + P.noseY) / 2, half = (P.browY - P.noseY) / 2;
+    add("feat", sample(s => { const t = s * 2 * PI; return surfY(sg * (ec + .15 + .15 * Math.cos(t)), mid + half * Math.sin(t)); }, 64));
+    // Seitenkreis (abgeflachte Schädelseite nach Loomis)
+    const r = .72;
+    add("side", sample(s => {
+      const t = s * 2 * PI, px = Math.cos(r), py = Math.sin(r) * Math.cos(t), pz = Math.sin(r) * Math.sin(t);
+      return surfY(sg * Math.atan2(px, pz), py);
+    }, 90));
+  }
+  const nRoot = surfY(0, P.eyeY + .02), nTip0 = surfY(0, P.noseY), wL = surfY(-.13, P.noseY + .02), wR = surfY(.13, P.noseY + .02);
+  const nTip = [nTip0[0], nTip0[1] + .02, nTip0[2] + P.noseLen];
+  add("feat", [[nRoot, nTip], [wL, nTip, wR], [wL, wR]]);
+  const nG = new THREE.BufferGeometry(); nG.setAttribute("position", new THREE.Float32BufferAttribute([...nRoot, ...wL, ...nTip, ...nRoot, ...nTip, ...wR, ...wL, ...wR, ...nTip], 3)); nG.computeVertexNormals();
+  group.add(new THREE.Mesh(nG, fillMat));
+  // Gitter
+  for (let i = 0; i < 12; i++) { if (i === 0 || i === 6) continue; const ph = -PI + i * PI / 6; add("grid", sample(s => surfY(ph, lerp(1, Bc(ph)[1], s)), 70)); }
+  for (const Y of [.75, .45, -.45, -.9]) add("grid", sample(s => surfY(lerp(-PI, PI, s), Y), 160));
+
+  for (const c of Object.keys(CATS)) group.add(lines[c][0], lines[c][1]);
+  headParts = { group, lines, neck };
+  head.add(group);
+  applyVisibility();
+}
+function applyVisibility() {
+  if (!headParts) return;
+  for (const c of Object.keys(CATS)) {
+    headParts.lines[c][0].visible = !!S.show[c];
+    headParts.lines[c][1].visible = !!S.show[c] && S.show.hidden;
+  }
+  headParts.neck.visible = S.show.neck;
+  fillMat.colorWrite = S.show.fill && !overlayOn();
+  hemi.color.set(0xffffff); hemi.groundColor.set(S.show.shade ? 0x8f9aa4 : 0xffffff);
+  hemi.intensity = S.show.shade ? .78 : 1; dirL.intensity = S.show.shade ? .38 : 0;
+  requestRender();
+}
+
+/* ---------- Kamera & Rendern ---------- */
+let W = 1, H = 1, unitsPerPx = .01;
+function updateCamera() {
+  const fov = lerp(6, 62, S.persp / 100), aspect = W / H;
+  const visH = Math.max(3.3, 2.6 / aspect);
+  const d = visH / (2 * Math.tan(rad(fov) / 2)) / S.zoom;
+  camera.fov = fov; camera.aspect = aspect; camera.near = Math.max(.01, d - 4); camera.far = d + 6;
+  camera.position.set(0, -.3, d); camera.lookAt(0, -.3, 0); camera.updateProjectionMatrix();
+  unitsPerPx = (2 * d * Math.tan(rad(fov) / 2)) / H;
+}
+function resize() {
+  const r = stage.getBoundingClientRect(); W = Math.max(1, r.width); H = Math.max(1, r.height);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.5));
+  renderer.setSize(W, H, false);
+  for (const m of lineMats) m.resolution.set(W, H);
+  requestRender();
+}
+let pending = false;
+function requestRender() { if (!pending) { pending = true; requestAnimationFrame(draw); } }
+function draw() {
+  pending = false;
+  updateCamera();
+  root.position.set(S.panX, S.panY, 0);
+  head.rotation.set(rad(S.pitch), rad(S.yaw), rad(S.roll));
+  outlineU.value = S.lw * 2.2 * unitsPerPx;
+  for (const c of Object.values(CATS)) { c.vis.linewidth = c.w * S.lw; c.hid.linewidth = c.w * S.lw * .75; }
+  renderer.render(scene, camera);
+}
+new ResizeObserver(resize).observe(stage);
+
+/* ---------- UI-Bindung ---------- */
+const sl = {
+  yaw: [$("#s-yaw"), $("#o-yaw")], pitch: [$("#s-pitch"), $("#o-pitch")], roll: [$("#s-roll"), $("#o-roll")],
+  persp: [$("#s-persp"), $("#o-persp")], lw: [$("#s-lw"), $("#o-lw")], ovop: [$("#s-ovop"), $("#o-ovop")]
+};
+function wrapYaw(v) { while (v > 180) v -= 360; while (v < -180) v += 360; return v; }
+function syncUI() {
+  for (const k of ["yaw", "pitch", "roll"]) { sl[k][0].value = Math.round(S[k]); sl[k][1].textContent = fmt(S[k]); }
+  sl.persp[0].value = S.persp; sl.persp[1].textContent = Math.round(lerp(6, 62, S.persp / 100)) + "° Bildwinkel";
+  sl.lw[0].value = S.lw; sl.lw[1].textContent = S.lw.toFixed(1) + "×";
+  sl.ovop[0].value = S.ovop; sl.ovop[1].textContent = S.ovop + " %";
+  $("#ro-yaw").textContent = fmt(S.yaw); $("#ro-pitch").textContent = fmt(S.pitch); $("#ro-roll").textContent = fmt(S.roll);
+}
+function setAngles(y, p, r) {
+  S.yaw = wrapYaw(y); S.pitch = clamp(p, -80, 80); S.roll = clamp(r, -45, 45);
+  syncUI(); requestRender(); persist(); scheduleMatches();
+}
+for (const k of ["yaw", "pitch", "roll"]) sl[k][0].addEventListener("input", e => { S[k] = +e.target.value; setAngles(S.yaw, S.pitch, S.roll); });
+sl.persp[0].addEventListener("input", e => { S.persp = +e.target.value; syncUI(); requestRender(); persist(); });
+sl.lw[0].addEventListener("input", e => { S.lw = +e.target.value; syncUI(); requestRender(); persist(); });
+sl.ovop[0].addEventListener("input", e => { S.ovop = +e.target.value; syncUI(); updateOverlay(); persist(); });
+document.querySelectorAll("#presets [data-p]").forEach(b => b.addEventListener("click", () => { const [y, p, r] = b.dataset.p.split(",").map(Number); setAngles(y, p, r); }));
+$("#btn-random").addEventListener("click", () => setAngles(Math.round(Math.random() * 180 - 90), Math.round(Math.random() * 70 - 35), Math.round(Math.random() * 30 - 15)));
+for (const k of Object.keys(S.show)) {
+  const el = $("#t-" + k); if (!el) continue; el.checked = !!S.show[k];
+  el.addEventListener("change", () => { S.show[k] = el.checked; applyVisibility(); persist(); if (k === "pip") renderMatches(); });
+}
+document.querySelectorAll("input[name=preset]").forEach(r => { r.checked = r.value === S.preset; r.addEventListener("change", () => { S.preset = r.value; P = PRESETS[S.preset]; buildHead(); persist(); }); });
+document.querySelectorAll("input[name=mode]").forEach(r => r.addEventListener("change", () => { mode = r.value; stage.classList.toggle("mode-move", mode === "move"); }));
+$("#btn-reset-view").addEventListener("click", () => { S.zoom = 1; S.panX = 0; S.panY = 0; requestRender(); persist(); });
+
+/* Ziehen, Pinch, Mausrad */
+const ptrs = new Map(); let pinch0 = null;
+stage.addEventListener("pointerdown", e => {
+  if (e.target.closest("button, .pip")) return;
+  stage.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  stage.classList.add("dragging");
+  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = { d: Math.hypot(a.x - b.x, a.y - b.y), z: S.zoom }; }
+});
+stage.addEventListener("pointermove", e => {
+  showFocusExit();
+  const p = ptrs.get(e.pointerId); if (!p) return;
+  const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+  if (ptrs.size >= 2 && pinch0) {
+    const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y);
+    S.zoom = clamp(pinch0.z * d / Math.max(1, pinch0.d), .3, 4); requestRender(); persist(); return;
+  }
+  if (mode === "move" || e.shiftKey) { S.panX += dx * unitsPerPx; S.panY -= dy * unitsPerPx; requestRender(); persist(); }
+  else setAngles(S.yaw + dx * .45, S.pitch + dy * .45, S.roll);
+});
+const endPtr = e => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = null; if (!ptrs.size) stage.classList.remove("dragging"); };
+stage.addEventListener("pointerup", endPtr); stage.addEventListener("pointercancel", endPtr);
+stage.addEventListener("wheel", e => { e.preventDefault(); S.zoom = clamp(S.zoom * Math.exp(-e.deltaY * .0015), .3, 4); requestRender(); persist(); }, { passive: false });
+document.addEventListener("keydown", e => {
+  if (e.target.closest("input, textarea, select")) return;
+  const st = e.shiftKey ? 15 : 5;
+  const m = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, -st], ArrowDown: [0, st] }[e.key];
+  if (m) { e.preventDefault(); setAngles(S.yaw + m[0], S.pitch + m[1], S.roll); }
+  else if (e.key === "f" || e.key === "F") toggleFocus();
+  else if (e.key === "Escape" && document.body.classList.contains("focus")) toggleFocus();
+});
+
+/* Fokusmodus */
+let fxT;
+function showFocusExit() { if (!document.body.classList.contains("focus")) return; const b = $("#btn-focus-exit"); b.classList.add("show"); clearTimeout(fxT); fxT = setTimeout(() => b.classList.remove("show"), 1800); }
+function toggleFocus() { document.body.classList.toggle("focus"); $("#btn-focus-exit").hidden = !document.body.classList.contains("focus"); showFocusExit(); requestAnimationFrame(resize); }
+$("#btn-focus").addEventListener("click", toggleFocus); $("#btn-focus-exit").addEventListener("click", toggleFocus);
+$("#btn-focus-exit").hidden = true;
+
+/* Theme-Wechsel */
+const reTheme = () => { readColors(); applyColors(COL); requestRender(); };
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", reTheme);
+new MutationObserver(reTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+/* ---------- Export ---------- */
+let downloads = null;
+async function exportPng(withFill) {
+  const prevCW = fillMat.colorWrite;
+  applyColors({ blue: "#2B7BBE", "blue-soft": "#93BFE0", red: "#CF3F37", fill: "#FFFFFF" });
+  fillMat.colorWrite = withFill;
+  draw();
+  const url = canvas.toDataURL("image/png");
+  fillMat.colorWrite = prevCW; applyColors(COL); draw();
+  const bin = atob(url.split(",")[1]), buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  const name = `kopf_${S.preset}_dreh${Math.round(S.yaw)}_neig${Math.round(S.pitch)}_kipp${Math.round(S.roll)}.png`;
+  try { await downloads.save({ filename: name, data: new Blob([buf], { type: "image/png" }) }); setNote("#export-note", "Gesichert: " + name); }
+  catch (e) { if (e && e.code !== "declined" && e.code !== "cancelled") setNote("#export-note", "Sichern hat nicht geklappt (" + (e.code || "Fehler") + "). Bildschirmfoto im Fokusmodus geht immer.", true); }
+}
+$("#btn-png-lines").addEventListener("click", () => exportPng(false));
+$("#btn-png-fill").addEventListener("click", () => exportPng(true));
+function setNote(sel, txt, err) { const n = $(sel); n.textContent = txt; n.classList.toggle("err", !!err); n.hidden = false; }
+
+/* ---------- Bildsammlung: Speicher ---------- */
+let refs = [], activeId = null, store = null, overlayFlip = false, overlayShow = true;
+const overlayEl = $("#overlay");
+function overlayOn() { return !!(activeId && overlayShow && refs.find(r => r.id === activeId)); }
+
+const LocalStore = {
+  kind: "local", db: null, urls: new Map(),
+  async init() {
+    this.db = await new Promise((res, rej) => { const r = indexedDB.open("kopfdreher", 1); r.onupgradeneeded = () => r.result.createObjectStore("refs", { keyPath: "id" }); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    await this.reload();
+  },
+  tx(mode) { return this.db.transaction("refs", mode).objectStore("refs"); },
+  async reload() {
+    const all = await new Promise((res, rej) => { const q = this.tx("readonly").getAll(); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
+    refs = all.map(r => { if (!this.urls.has(r.id)) this.urls.set(r.id, URL.createObjectURL(r.blob)); return { id: r.id, yaw: r.yaw, pitch: r.pitch, roll: r.roll, createdAt: r.createdAt, src: this.urls.get(r.id) }; });
+    onRefs();
+  },
+  put(o) { return new Promise((res, rej) => { const q = this.tx("readwrite").put(o); q.onsuccess = res; q.onerror = () => rej(q.error); }); },
+  get(id) { return new Promise((res, rej) => { const q = this.tx("readonly").get(id); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); },
+  async add(blob) { const id = "r" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); await this.put({ id, blob, yaw: null, pitch: null, roll: null, createdAt: Date.now() }); await this.reload(); return id; },
+  async setAngles(id, a) { const o = await this.get(id); Object.assign(o, a); await this.put(o); await this.reload(); },
+  async remove(id) { await new Promise((res, rej) => { const q = this.tx("readwrite").delete(id); q.onsuccess = res; q.onerror = () => rej(q.error); }); const u = this.urls.get(id); if (u) URL.revokeObjectURL(u); this.urls.delete(id); await this.reload(); }
+};
+const CloudStore = {
+  kind: "cloud", assets: null, coll: null,
+  async init(assets, db) {
+    this.assets = assets; this.coll = db.collection("refs");
+    this.coll.onSnapshot(snap => {
+      refs = snap.docs.map(d => { const v = d.data() || {}; return { id: d.id, assetId: v.assetId, yaw: v.yaw ?? null, pitch: v.pitch ?? null, roll: v.roll ?? null, createdAt: v.createdAt || 0, src: "/_blob/" + v.assetId }; });
+      onRefs();
+    }, err => setNote("#store-note", "Sammlung konnte nicht geladen werden (" + (err && err.code || "Fehler") + "). Seite neu laden.", true));
+  },
+  async add(blob) {
+    const up = await this.assets.upload(blob, { type: "image/jpeg" });
+    const ref = this.coll.doc(); await ref.set({ assetId: up.id, yaw: null, pitch: null, roll: null, createdAt: Date.now() });
+    return ref.id;
+  },
+  async setAngles(id, a) { await this.coll.doc(id).update(a); },
+  async remove(id) { const r = refs.find(x => x.id === id); await this.coll.doc(id).delete(); if (r && r.assetId) { try { await this.assets.delete(r.assetId); } catch (e) {} } }
+};
+
+async function initStore() {
+  let assets = null, db = null;
+  if (window.claude && typeof window.claude.use === "function") {
+    try { [assets, db, downloads] = await Promise.all([claude.use("assets"), claude.use("db"), claude.use("downloads")]); } catch (e) {}
+  }
+  if (!downloads) { $("#export-row").hidden = true; setNote("#export-note", "Direktes Sichern ist hier nicht verfügbar. Fokus einschalten (Taste F) und ein Bildschirmfoto machen."); }
+  try {
+    if (assets && db) { store = CloudStore; await store.init(assets, db); setNote("#store-note", "Die Bilder liegen im Artefakt und sind auf allen deinen Geräten verfügbar."); }
+    else { store = LocalStore; await store.init(); setNote("#store-note", "Die Bilder liegen nur in diesem Browser. Öffne die Seite in Claude, damit sie geräteübergreifend gespeichert werden."); }
+  } catch (e) { store = null; setNote("#store-note", "Kein Speicher verfügbar, Bilder können nicht gesichert werden.", true); }
+}
+
+/* Hochladen */
+async function prepImage(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const s = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement("canvas"); c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+    const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+    return await new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error("encode")), "image/jpeg", .88));
+  } finally { URL.revokeObjectURL(url); }
+}
+let uploading = false;
+async function addFiles(files) {
+  files = [...files].filter(f => f.type.startsWith("image/"));
+  if (!files.length) return;
+  if (!store) { setNote("#upload-note", "Kein Speicher verbunden.", true); return; }
+  if (uploading) return; uploading = true;
+  let ok = 0, firstId = null, fail = 0;
+  for (const f of files) {
+    setNote("#upload-note", `Lade hoch … ${ok + fail + 1} von ${files.length}`);
+    try { const id = await store.add(await prepImage(f)); ok++; if (!firstId) firstId = id; }
+    catch (e) { fail++; if (e && e.code === "quota_or_state") { setNote("#upload-note", "Speicher des Artefakts ist voll. Lösche Bilder, die du nicht brauchst.", true); break; } }
+  }
+  uploading = false;
+  if (fail && ok) setNote("#upload-note", `${ok} hinzugefügt, ${fail} fehlgeschlagen.`, true);
+  else if (fail) setNote("#upload-note", "Hochladen fehlgeschlagen. Bitte noch einmal versuchen.", true);
+  else setNote("#upload-note", `${ok} ${ok === 1 ? "Bild" : "Bilder"} hinzugefügt. Jetzt Kopf passend drehen und Winkel speichern.`);
+  if (firstId && !activeId) { activeId = firstId; overlayShow = true; overlayFlip = false; onRefs(); }
+}
+$("#btn-add").addEventListener("click", () => $("#file-in").click());
+$("#file-in").addEventListener("change", e => { addFiles(e.target.files); e.target.value = ""; });
+const drop = $("#drop");
+for (const el of [drop, stage]) {
+  el.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+  el.addEventListener("dragleave", () => drop.classList.remove("over"));
+  el.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("over"); addFiles(e.dataTransfer.files); });
+}
+document.addEventListener("paste", e => { const fs = [...(e.clipboardData?.items || [])].filter(i => i.kind === "file").map(i => i.getAsFile()).filter(Boolean); if (fs.length) addFiles(fs); });
+
+/* ---------- Abgleich ---------- */
+const quat = (y, p, r) => new THREE.Quaternion().setFromEuler(new THREE.Euler(rad(p), rad(y), rad(r), "YXZ"));
+const angDist = (a, b) => 2 * Math.acos(Math.min(1, Math.abs(a.dot(b)))) * 180 / Math.PI;
+function bestMatches() {
+  const q = quat(S.yaw, S.pitch, S.roll), out = [];
+  for (const r of refs) {
+    if (r.yaw == null) continue;
+    const d1 = angDist(q, quat(r.yaw, r.pitch, r.roll)), d2 = angDist(q, quat(-r.yaw, r.pitch, -r.roll));
+    out.push(d2 + .5 < d1 ? { r, d: d2, flip: true } : { r, d: d1, flip: false });
+  }
+  return out.sort((a, b) => a.d - b.d);
+}
+let mT;
+function scheduleMatches() { clearTimeout(mT); mT = setTimeout(renderMatches, 60); }
+function renderMatches() {
+  const all = bestMatches(), list = all.filter(m => m.d <= 30).slice(0, 9), box = $("#matches");
+  box.replaceChildren();
+  const sorted = refs.filter(r => r.yaw != null).length;
+  $("#matches-empty").hidden = list.length > 0;
+  $("#matches-empty").textContent = sorted ? "Kein Bild liegt innerhalb von 30° Abweichung. Dreh weiter oder ordne mehr Bilder ein." : "Noch keine eingeordneten Bilder. Lade unten Anime-Screenshots hoch und speichere zu jedem den Winkel.";
+  $("#match-count").textContent = sorted ? `${list.length} von ${sorted}` : "";
+  for (const m of list) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "thumb" + (m.r.id === activeId ? " sel" : "");
+    b.setAttribute("aria-label", `Beispiel, ${Math.round(m.d)}° Abweichung${m.flip ? ", gespiegelt" : ""}`);
+    const im = document.createElement("img"); im.src = m.r.src; im.alt = ""; im.loading = "lazy"; if (m.flip) im.className = "flip";
+    const t = document.createElement("span"); t.className = "tag"; t.textContent = Math.round(m.d) + "°" + (m.flip ? " ⇋" : "");
+    b.append(im, t); b.addEventListener("click", () => selectRef(m.r.id, m.flip));
+    box.append(b);
+  }
+  const pip = $("#pip"), best = all[0];
+  if (S.show.pip && best && best.d <= 35 && !(overlayOn() && best.r.id === activeId)) {
+    pip.hidden = false; const im = $("#pip-img"); if (im.getAttribute("src") !== best.r.src) im.src = best.r.src;
+    im.classList.toggle("flip", best.flip); $("#pip-dev").textContent = Math.round(best.d) + "°" + (best.flip ? " gespiegelt" : "");
+    pip.onclick = () => selectRef(best.r.id, best.flip);
+  } else pip.hidden = true;
+}
+
+/* ---------- Sammlung anzeigen ---------- */
+function selectRef(id, flip) { activeId = id; overlayFlip = !!flip; overlayShow = true; $("#del-confirm").hidden = true; onRefs(); $("#active").scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+function onRefs() {
+  refs.sort((a, b) => a.createdAt - b.createdAt);
+  if (activeId && !refs.find(r => r.id === activeId)) activeId = null;
+  const unsorted = refs.filter(r => r.yaw == null);
+  $("#lib-count").textContent = refs.length ? `${refs.length} Bilder · ${unsorted.length} ohne Winkel` : "";
+  $("#lib-steps").hidden = refs.length > 3;
+  const lib = $("#lib"); lib.replaceChildren();
+  for (const r of refs) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "thumb" + (r.id === activeId ? " sel" : "");
+    b.setAttribute("aria-label", r.yaw == null ? "Bild ohne Winkel" : `Bild, Drehung ${fmt(r.yaw)}, Neigung ${fmt(r.pitch)}`);
+    const im = document.createElement("img"); im.src = r.src; im.alt = ""; im.loading = "lazy"; b.append(im);
+    if (r.yaw == null) { const d = document.createElement("span"); d.className = "dot"; b.append(d); }
+    else { const t = document.createElement("span"); t.className = "tag"; t.textContent = Math.round(r.yaw) + "/" + Math.round(r.pitch); b.append(t); }
+    b.addEventListener("click", () => selectRef(r.id, false));
+    lib.append(b);
+  }
+  const a = refs.find(r => r.id === activeId), card = $("#active");
+  card.hidden = !a;
+  if (a) {
+    const im = $("#active-img"); if (im.getAttribute("src") !== a.src) im.src = a.src; im.classList.toggle("flip", overlayFlip);
+    $("#active-meta").textContent = a.yaw == null ? "Noch kein Winkel gespeichert" : `Gespeichert: Drehung ${fmt(a.yaw)} · Neigung ${fmt(a.pitch)} · Kippung ${fmt(a.roll)}`;
+    $("#btn-apply-angle").disabled = a.yaw == null;
+    $("#t-overlay").checked = overlayShow; $("#t-flip").checked = overlayFlip;
+    $("#btn-next").disabled = !unsorted.some(r => r.id !== a.id);
+  }
+  updateOverlay(); renderMatches();
+}
+function updateOverlay() {
+  const a = refs.find(r => r.id === activeId);
+  if (a && overlayShow) {
+    if (overlayEl.getAttribute("src") !== a.src) overlayEl.src = a.src;
+    overlayEl.hidden = false; overlayEl.style.opacity = S.ovop / 100; overlayEl.classList.toggle("flip", overlayFlip);
+    const h = $("#hint");
+    if (a.yaw == null) { h.hidden = false; h.textContent = "Dreh den Kopf passend zum Bild, dann „Aktuellen Winkel speichern“."; } else h.hidden = true;
+  } else { overlayEl.hidden = true; $("#hint").hidden = true; }
+  applyVisibility();
+}
+$("#t-overlay").addEventListener("change", e => { overlayShow = e.target.checked; onRefs(); });
+$("#t-flip").addEventListener("change", e => { overlayFlip = e.target.checked; onRefs(); });
+$("#btn-close").addEventListener("click", () => { activeId = null; onRefs(); });
+$("#btn-apply-angle").addEventListener("click", () => { const a = refs.find(r => r.id === activeId); if (a && a.yaw != null) overlayFlip ? setAngles(-a.yaw, a.pitch, -a.roll) : setAngles(a.yaw, a.pitch, a.roll); });
+function nextUnsorted() { const n = refs.find(r => r.yaw == null && r.id !== activeId); if (n) { activeId = n.id; overlayFlip = false; overlayShow = true; onRefs(); } }
+$("#btn-next").addEventListener("click", nextUnsorted);
+$("#btn-save-angle").addEventListener("click", async () => {
+  const a = refs.find(r => r.id === activeId); if (!a || !store) return;
+  // Wird das Bild gespiegelt angezeigt, gilt der Kopfwinkel für das Spiegelbild.
+  const v = overlayFlip ? { yaw: -Math.round(S.yaw), pitch: Math.round(S.pitch), roll: -Math.round(S.roll) } : { yaw: Math.round(S.yaw), pitch: Math.round(S.pitch), roll: Math.round(S.roll) };
+  const wasUnsorted = a.yaw == null;
+  try {
+    await store.setAngles(a.id, v); Object.assign(a, v);
+    setNote("#upload-note", `Winkel gespeichert: ${fmt(v.yaw)} / ${fmt(v.pitch)} / ${fmt(v.roll)}`);
+    if (wasUnsorted && refs.some(r => r.yaw == null && r.id !== a.id)) nextUnsorted(); else onRefs();
+  } catch (e) { setNote("#upload-note", "Speichern fehlgeschlagen (" + (e && e.code || "Fehler") + ").", true); }
+});
+$("#btn-del").addEventListener("click", () => { $("#del-confirm").hidden = false; $("#btn-del-no").focus(); });
+$("#btn-del-no").addEventListener("click", () => { $("#del-confirm").hidden = true; });
+$("#btn-del-yes").addEventListener("click", async () => {
+  const id = activeId; $("#del-confirm").hidden = true; if (!id || !store) return;
+  try { await store.remove(id); activeId = null; onRefs(); setNote("#upload-note", "Bild gelöscht."); }
+  catch (e) { setNote("#upload-note", "Löschen fehlgeschlagen (" + (e && e.code || "Fehler") + ").", true); }
+});
+
+/* ---------- Start ---------- */
+syncUI(); buildHead(); resize(); renderMatches();
+initStore();
+})();
+</script>

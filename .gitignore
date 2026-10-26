@@ -1,0 +1,9 @@
+# Bilder und Laufzeitdaten gehören nicht ins Repository
+data/
+bilder/
+*.sqlite
+*.db
+.env
+__pycache__/
+node_modules/
+.DS_Store
