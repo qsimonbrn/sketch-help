@@ -1,6 +1,6 @@
 # TODO
 
-Stand: 26.10.2026, v0.11, Analyseskript Version 4. Reihenfolge = Vorschlag für die nächsten Sitzungen.
+Stand: 26.10.2026, v0.12, Analyseskript Version 5. Reihenfolge = Vorschlag für die nächsten Sitzungen.
 Hintergrund und Messwerte stehen in [docs/architektur.md](docs/architektur.md), der Plan in [docs/roadmap.md](docs/roadmap.md).
 
 ## 1. Version 5 auf dem iPad prüfen
@@ -23,10 +23,11 @@ Zwei Quellen nennen sie CC0 ([OpenGameArt](https://opengameart.org/content/vroid
 Mitsua-Datensatz). Gilt nur für AvatarSample D–G, HairSample männlich/weiblich, Basismodelle,
 Sakurada Fumiriya, Sendagaya Shino.
 
-- [ ] Lizenz an der offiziellen VRoid-Hilfeseite bestätigen
-- [ ] Dateien beschaffen (aus Claudes Umgebung nicht erreichbar; Simon lädt sie herunter)
-- [ ] Figurenauswahl in der App, Filter männlich/weiblich
-- [ ] Ablage: Artefakt als Base64-Text (max. 16 MB pro Datei) oder auf dem Pi
+- [x] Lizenz offiziell bestätigt (vroid.pixiv.help, Artikel 4402614652569): CC0 sind HairSample_Male, HairSample_Female,
+      β AvatarSample_1–4. AvatarSample_A–C haben eigene Bedingungen. D–G, Sakurada, Sendagaya nennt nur OpenGameArt CC0
+- [x] HairSample_Female/_Male über den Pi geladen (`sketch-help/figuren/`), in v0.12 eingebaut (zwei Base64-Teile je Figur)
+- [ ] Weitere Figuren nur, wenn ihre Lizenz offiziell belegt ist (β AvatarSample_1–4: Download-Quelle suchen)
+- [x] Danbooru-Knopf als Ergänzung (nur Link, nichts gespeichert); Simon prüft auf dem iPad, ob die Seite aufgeht
 
 VRoid-Modelle sind VRM 0.x; `VRMUtils.rotateVRM0` ist schon eingebaut.
 
@@ -49,8 +50,9 @@ per Dateiname an die Einträge gehängt (Feld `analyse`), Simon prüft Schlagwor
 - [ ] Grenzfälle „leicht gedreht“: Schwelle ggf. nachschärfen, wenn die App-Beispiele danebenliegen
 - [x] Ergebnis importiert (26.10.2026, `ergebnis3_rahmen.jsonl`, 40 Einträge per `import_analyse.py`, gegengelesen);
       Rückweg: `ergebnis2.jsonl` liegt noch auf dem Pi
-- [ ] In der App prüfen: „Vorschlag“ bei IMG_0489/0444 muss „Dreiviertel nach links“ zeigen und der Kopf dann
-      wirklich nach links blicken (Vorzeichen yaw ↔ 3D-Kopf ist noch nicht gegengeprüft)
+- [x] Vorzeichen yaw ↔ 3D-Kopf geprüft (−40° blickt wie „¾ links“)
+- [ ] „Vorschlag übernehmen“ reagiert bei Simon nicht (26.10.2026); im Nachbau mit echten Daten funktioniert er (+30° → −45°).
+      Ursache offen. Danach „Kopf auf diesen Winkel“ mit Analyse-Vorschlag als Rückfall zusammenlegen
 - [ ] IMG_0480 (Augen-Nahaufnahme) in der App aussortieren; „brauchbar“ des Modells hat sie durchgelassen
 - [ ] App: Bilder auf den Figur-Rahmen zugeschnitten anzeigen (Sammlung, Overlay, Beispiele)
 - [ ] Duplikaterkennung verbessern: dHash war unzuverlässig (0483/0484 als ähnlich gemeldet, sind verschiedene Figuren)

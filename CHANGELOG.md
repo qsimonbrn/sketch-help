@@ -2,7 +2,17 @@
 
 Versionsnummern entsprechen den Veröffentlichungen des Artefakts.
 
-## Unveröffentlicht
+## v0.12 (26.10.2026)
+
+- **Figurenauswahl:** pixiv-Beispiel, VRoid weiblich, VRoid männlich (HairSample_Female/_Male, laut offizieller
+  VRoid-Hilfe CC0). Je ca. 25 MB, als Base64-Text in zwei Teilen (Artefakt-Grenze 16 MB pro Datei),
+  geladen wird nur die gewählte Figur; die Wahl wird gemerkt
+- Arme bei VRM-0-Figuren nach unten statt nach oben
+- **„Bei Danbooru ansehen“** unter den Beispielen: öffnet die Suche zur aktuellen Ansicht (straight-on, from_side,
+  profile, from_behind, dazu from_above/from_below, immer rating:g). Für ¾ gibt es dort kein Schlagwort
+- Vorzeichen geprüft: Analyse-Kategorie „¾ links“ (−45°) und 3D-Kopf blicken zur selben Seite
+
+## Analyse-Werkzeuge (26.10.2026)
 
 - **Analyse Version 4** (`tools/analyse.py`): grobe Ansichten statt Winkeln, Drehung (frontal, ¾ links/rechts,
   Profil links/rechts, hinten) und Neigung (oben, Augenhöhe, unten). `kopf` nur noch aus der Kategorie

@@ -274,6 +274,14 @@ body.focus .stage-btn{display:none}
             <label><input type="radio" name="blick" value="unten"><span>unten</span></label>
           </div>
         </div>
+        <div class="row" style="align-items:center;justify-content:space-between">
+          <label for="fig-pick" style="font-size:14px;font-weight:500">Figur</label>
+          <select id="fig-pick" class="btn">
+            <option value="pixiv">pixiv-Beispiel</option>
+            <option value="weiblich">VRoid weiblich</option>
+            <option value="maennlich">VRoid männlich</option>
+          </select>
+        </div>
         <label class="chip"><input type="checkbox" id="t-figline"><span>Figur als Linienzeichnung</span></label>
         <p class="note" id="fig-note">Figur wird geladen …</p>
         <details class="eyes" id="eyes-box">
@@ -352,6 +360,10 @@ body.focus .stage-btn{display:none}
           </div>
         </div>
         <div class="thumbs" id="matches"></div>
+        <div class="row" style="align-items:center">
+          <a class="btn" id="btn-danbooru" href="https://danbooru.donmai.us/" target="_blank" rel="noopener noreferrer">Bei Danbooru ansehen</a>
+          <span class="note" id="danbooru-tags"></span>
+        </div>
         <p class="note" id="matches-empty">Noch keine eingeordneten Bilder. Lade unten Anime-Screenshots hoch und speichere zu jedem den Winkel.</p>
       </section>
 
@@ -455,7 +467,7 @@ const sstep = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); retu
 const fmt = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(Math.round(v)) + "°";
 
 /* ---------- Zustand ---------- */
-const DEF = { yaw: 30, pitch: 10, roll: 0, zoom: 1, panX: 0, panY: 0, persp: 30, lw: 1.2, style: 50, shadeMode: "soft", light: -45, eyeDist: 0, eyeSize: 0, eyeHeight: 0, fig: "side", figClip: true, eyeShape: "anime", iris: true, feat: "auge", fg: "alle", fh: "alle", mimik: "neutral", blick: "gerade", figLine: false,
+const DEF = { yaw: 30, pitch: 10, roll: 0, zoom: 1, panX: 0, panY: 0, persp: 30, lw: 1.2, style: 50, shadeMode: "soft", light: -45, eyeDist: 0, eyeSize: 0, eyeHeight: 0, fig: "side", figClip: true, eyeShape: "anime", iris: true, feat: "auge", fg: "alle", fh: "alle", mimik: "neutral", blick: "gerade", figLine: false, figur: "pixiv",
   show: { axis: true, face: true, feat: true, side: true, grid: false, hidden: true, fill: true, neck: true, pip: true, box: false, vp: false },
   ovop: 50 };
 let S = JSON.parse(JSON.stringify(DEF));
@@ -736,6 +748,14 @@ function applyVisibility() {
 /* ---------- Anime-Figur (VRM) ---------- */
 // Beispielfigur von pixiv (VRM Public License 1.0: Weitergabe und Veränderung erlaubt, kein Namensvermerk nötig)
 const DEFAULT_VRM = { url: "__VRM_URL__", base64: __VRM_B64__, name: "VRM1 Constraint Twist Sample · © pixiv Inc. · VRM-Lizenz 1.0" };
+/* VRoid-Beispielfiguren, laut offizieller VRoid-Hilfe CC0 (HairSample_Female/_Male). Als Base64-Text in zwei Teilen,
+   weil Artefakt-Dateien höchstens 16 MB haben dürfen; geladen wird nur die gewählte Figur. */
+const FIGUREN = {
+  pixiv: DEFAULT_VRM,
+  weiblich: { url: ["figur/hairsample_female.1.txt", "figur/hairsample_female.2.txt"], base64: true, mb: 24, name: "VRoid HairSample weiblich · CC0" },
+  maennlich: { url: ["figur/hairsample_male.1.txt", "figur/hairsample_male.2.txt"], base64: true, mb: 25, name: "VRoid HairSample männlich · CC0" },
+};
+const figSrc = () => FIGUREN[S.figur] || DEFAULT_VRM;
 const figScene = new THREE.Scene();
 const figAmb = new THREE.AmbientLight(0xffffff, .55 * Math.PI); figScene.add(figAmb);
 const figDir = new THREE.DirectionalLight(0xffffff, .9 * Math.PI); figScene.add(figDir);
@@ -773,17 +793,20 @@ function applyFace() {
 }
 function poseVRM(v) {
   const h = v.humanoid, set = (b, z) => { const n = h.getNormalizedBoneNode(b); if (n) n.rotation.z = z; };
-  set("leftUpperArm", -1.2); set("rightUpperArm", 1.2);   // Arme locker nach unten statt T-Pose
+  // Arme locker nach unten statt T-Pose; VRM-0-Figuren (z. B. VRoid HairSample) sind nach rotateVRM0 gespiegelt
+  const s = v.meta && v.meta.metaVersion === "0" ? -1 : 1;
+  set("leftUpperArm", -1.2 * s); set("rightUpperArm", 1.2 * s);
   v.update(0);
 }
+let vrmNext = null;
 async function loadVRM(src) {
-  if (vrmLoading) return; vrmLoading = true;
-  setNote("#fig-note", "Figur wird geladen …");
+  if (vrmLoading) { vrmNext = src; return; } vrmLoading = true;
+  setNote("#fig-note", "Figur wird geladen …" + (src.mb ? " (ca. " + src.mb + " MB)" : ""));
   try {
     let gltf;
     if (src.base64) {  // Artefakte liefern keine .vrm aus, daher als Base64-Text abgelegt
-      const r = await fetch(src.url); if (!r.ok) throw new Error("HTTP " + r.status);
-      const bin = atob((await r.text()).trim()), buf = new Uint8Array(bin.length);
+      const teile = await Promise.all([].concat(src.url).map(async u => { const r = await fetch(u); if (!r.ok) throw new Error("HTTP " + r.status); return (await r.text()).trim(); }));
+      const bin = atob(teile.join("")), buf = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
       gltf = await gltfLoader.parseAsync(buf.buffer, "");
     } else gltf = await gltfLoader.loadAsync(src.url);
@@ -801,7 +824,10 @@ async function loadVRM(src) {
     setNote("#fig-note", src.name || ("Figur: " + (meta.name || meta.title || "ohne Namen")));
   } catch (e) {
     setNote("#fig-note", "Figur konnte nicht geladen werden: " + (e && e.message || e), true);
-  } finally { vrmLoading = false; requestRender(); }
+  } finally {
+    vrmLoading = false; requestRender();
+    if (vrmNext) { const n = vrmNext; vrmNext = null; if (n !== src) loadVRM(n); }
+  }
 }
 
 /* ---------- Figur als Linienzeichnung ----------
@@ -930,9 +956,22 @@ function syncUI() {
   sl.ovop[0].value = S.ovop; sl.ovop[1].textContent = S.ovop + " %";
   $("#ro-yaw").textContent = fmt(S.yaw); $("#ro-pitch").textContent = fmt(S.pitch); $("#ro-roll").textContent = fmt(S.roll);
 }
+/* Danbooru-Suche zur aktuellen Ansicht: Drehung → straight-on / from_side / profile / from_behind,
+   Neigung → from_above / from_below, immer rating:g (jugendfrei). Ohne Konto gehen 3 Schlagworte. */
+function danbooruTags() {
+  const ay = Math.abs(wrapYaw(S.yaw)), tags = [ay < 20 ? "straight-on" : ay < 70 ? "from_side" : ay < 115 ? "profile" : "from_behind"];
+  if (S.pitch > 15) tags.push("from_above"); else if (S.pitch < -15) tags.push("from_below");
+  tags.push("rating:g");
+  return tags;
+}
+function updateDanbooru() {
+  const tags = danbooruTags(), a = $("#btn-danbooru"); if (!a) return;
+  a.href = "https://danbooru.donmai.us/posts?tags=" + tags.map(encodeURIComponent).join("+");
+  $("#danbooru-tags").textContent = tags.filter(t => t !== "rating:g").join(" · ") + (tags[0] === "from_side" ? " (¾ gibt es dort nicht)" : "");
+}
 function setAngles(y, p, r) {
   S.yaw = wrapYaw(y); S.pitch = clamp(p, -80, 80); S.roll = clamp(r, -45, 45);
-  syncUI(); requestRender(); persist(); scheduleMatches();
+  syncUI(); requestRender(); persist(); scheduleMatches(); updateDanbooru();
 }
 for (const k of ["yaw", "pitch", "roll"]) sl[k][0].addEventListener("input", e => { S[k] = +e.target.value; setAngles(S.yaw, S.pitch, S.roll); });
 sl.persp[0].addEventListener("input", e => { S.persp = +e.target.value; syncUI(); requestRender(); persist(); });
@@ -965,7 +1004,7 @@ document.querySelectorAll("input[name=fig]").forEach(r => { r.checked = r.value 
 /* Figur erst beim ersten Einschalten laden (14 MB) */
 function setFig(on) {
   figOn = on; $("#btn-fig").setAttribute("aria-pressed", String(on));
-  if (on && !vrm) loadVRM(DEFAULT_VRM);
+  if (on && !vrm) loadVRM(figSrc());
   applyVisibility();
 }
 $("#btn-fig").addEventListener("click", () => setFig(!figOn));
@@ -976,6 +1015,8 @@ $("#t-figline").checked = S.figLine;
 $("#t-figline").addEventListener("change", e => { S.figLine = e.target.checked; persist(); if (!figOn && S.figLine) setFig(true); requestRender(); });
 $("#t-figclip").checked = S.figClip;
 $("#t-figclip").addEventListener("change", e => { S.figClip = e.target.checked; requestRender(); persist(); });
+$("#fig-pick").value = FIGUREN[S.figur] ? S.figur : "pixiv";
+$("#fig-pick").addEventListener("change", e => { S.figur = e.target.value; persist(); if (!figOn) setFig(true); else loadVRM(figSrc()); });
 $("#btn-vrm").addEventListener("click", () => $("#vrm-in").click());
 $("#vrm-in").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) loadVRM({ url: URL.createObjectURL(f), name: "Eigene Figur: " + f.name + " (nur bis zum Neuladen)" }); });
 document.querySelectorAll("input[name=shade]").forEach(r => { r.checked = r.value === S.shadeMode; r.addEventListener("change", () => { S.shadeMode = r.value; applyVisibility(); persist(); }); });
@@ -1461,8 +1502,8 @@ $("#btn-pose-save").addEventListener("click", savePose);
 $("#pose-name").addEventListener("keydown", e => { if (e.key === "Enter") savePose(); });
 
 /* ---------- Start ---------- */
-syncUI(); buildHead(); resize(); renderMatches();
-setNote("#fig-note", "Figur wird beim ersten Einschalten geladen (ca. 14 MB).");
+syncUI(); buildHead(); resize(); renderMatches(); updateDanbooru();
+setNote("#fig-note", "Figur wird beim ersten Einschalten geladen (ca. " + (figSrc().mb || 14) + " MB).");
 initStore();
 })();
 </script>
